@@ -1,0 +1,242 @@
+{
+    "ServiceDelivery": {
+        "ResponseTimestamp": "2023-01-25T20:52:40Z",
+        "ProducerRef": "SF",
+        "Status": true,
+        "StopMonitoringDelivery": {
+            "version": "1.4",
+            "ResponseTimestamp": "2023-01-25T20:52:40Z",
+            "Status": true,
+            "MonitoredStopVisit": [
+                {
+                    "RecordedAtTime": "2023-01-25T20:52:37Z",
+                    "MonitoringRef": "15726",
+                    "MonitoredVehicleJourney": {
+                        "LineRef": "M",
+                        "DirectionRef": "IB",
+                        "FramedVehicleJourneyRef": {
+                            "DataFrameRef": "2023-01-25",
+                            "DatedVehicleJourneyRef": "11092357_M11"
+                        },
+                        "PublishedLineName": "M OCEAN VIEW",
+                        "OperatorRef": "SF",
+                        "OriginRef": "17164",
+                        "OriginName": "San Jose Ave & Geneva Ave",
+                        "DestinationRef": "16992",
+                        "DestinationName": "Embarcadero Station",
+                        "Monitored": true,
+                        "InCongestion": null,
+                        "VehicleLocation": {
+                            "Longitude": "-122.430656",
+                            "Latitude": "37.76614"
+                        },
+                        "Bearing": "46.0000000000",
+                        "Occupancy": "seatsAvailable",
+                        "VehicleRef": "2024",
+                        "MonitoredCall": {
+                            "StopPointRef": "15726",
+                            "StopPointName": "Metro Church Station/Downtown",
+                            "VehicleLocationAtStop": "",
+                            "VehicleAtStop": "true",
+                            "AimedArrivalTime": "2023-01-25T20:55:08Z",
+                            "ExpectedArrivalTime": "2023-01-25T20:52:56Z",
+                            "AimedDepartureTime": "2023-01-25T20:55:08Z",
+                            "ExpectedDepartureTime": null,
+                            "Distances": ""
+                        }
+                    }
+                },
+                {
+                    "RecordedAtTime": "2023-01-25T20:52:37Z",
+                    "MonitoringRef": "15726",
+                    "MonitoredVehicleJourney": {
+                        "LineRef": "K",
+                        "DirectionRef": "IB",
+                        "FramedVehicleJourneyRef": {
+                            "DataFrameRef": "2023-01-25",
+                            "DatedVehicleJourneyRef": "11090110_M11"
+                        },
+                        "PublishedLineName": "INGLESIDE",
+                        "OperatorRef": "SF",
+                        "OriginRef": "15418",
+                        "OriginName": "Balboa Park BART/Mezzanine Level",
+                        "DestinationRef": "16992",
+                        "DestinationName": "Embarcadero Station",
+                        "Monitored": true,
+                        "InCongestion": null,
+                        "VehicleLocation": {
+                            "Longitude": "-122.465988",
+                            "Latitude": "37.7407074"
+                        },
+                        "Bearing": "38.0000000000",
+                        "Occupancy": "seatsAvailable",
+                        "VehicleRef": "1446",
+                        "MonitoredCall": {
+                            "StopPointRef": "15726",
+                            "StopPointName": "Metro Church Station/Downtown",
+                            "VehicleLocationAtStop": "",
+                            "VehicleAtStop": "false",
+                            "AimedArrivalTime": "2023-01-25T21:00:08Z",
+                            "ExpectedArrivalTime": "2023-01-25T21:00:11Z",
+                            "AimedDepartureTime": "2023-01-25T21:00:08Z",
+                            "ExpectedDepartureTime": null,
+                            "Distances": ""
+                        }
+                    }
+                },
+                {
+                    "RecordedAtTime": "2023-01-25T20:52:37Z",
+                    "MonitoringRef": "15726",
+                    "MonitoredVehicleJourney": {
+                        "LineRef": "M",
+                        "DirectionRef": "IB",
+                        "FramedVehicleJourneyRef": {
+                            "DataFrameRef": "2023-01-25",
+                            "DatedVehicleJourneyRef": "11092356_M11"
+                        },
+                        "PublishedLineName": "M OCEAN VIEW",
+                        "OperatorRef": "SF",
+                        "OriginRef": "17164",
+                        "OriginName": "San Jose Ave & Geneva Ave",
+                        "DestinationRef": "16992",
+                        "DestinationName": "Embarcadero Station",
+                        "Monitored": true,
+                        "InCongestion": null,
+                        "VehicleLocation": {
+                            "Longitude": "-122.469643",
+                            "Latitude": "37.7373772"
+                        },
+                        "Bearing": "47.0000000000",
+                        "Occupancy": "seatsAvailable",
+                        "VehicleRef": "2001",
+                        "MonitoredCall": {
+                            "StopPointRef": "15726",
+                            "StopPointName": "Metro Church Station/Downtown",
+                            "VehicleLocationAtStop": "",
+                            "VehicleAtStop": "false",
+                            "AimedArrivalTime": "2023-01-25T21:05:08Z",
+                            "ExpectedArrivalTime": "2023-01-25T21:03:06Z",
+                            "AimedDepartureTime": "2023-01-25T21:05:08Z",
+                            "ExpectedDepartureTime": null,
+                            "Distances": ""
+                        }
+                    }
+                },
+                {
+                    "RecordedAtTime": "2023-01-25T20:52:37Z",
+                    "MonitoringRef": "15726",
+                    "MonitoredVehicleJourney": {
+                        "LineRef": "M",
+                        "DirectionRef": "IB",
+                        "FramedVehicleJourneyRef": {
+                            "DataFrameRef": "2023-01-25",
+                            "DatedVehicleJourneyRef": "11092355_M11"
+                        },
+                        "PublishedLineName": "M OCEAN VIEW",
+                        "OperatorRef": "SF",
+                        "OriginRef": "17164",
+                        "OriginName": "San Jose Ave & Geneva Ave",
+                        "DestinationRef": "16992",
+                        "DestinationName": "Embarcadero Station",
+                        "Monitored": true,
+                        "InCongestion": null,
+                        "VehicleLocation": {
+                            "Longitude": "-122.475166",
+                            "Latitude": "37.7216492"
+                        },
+                        "Bearing": "3.0000000000",
+                        "Occupancy": "seatsAvailable",
+                        "VehicleRef": "1473",
+                        "MonitoredCall": {
+                            "StopPointRef": "15726",
+                            "StopPointName": "Metro Church Station/Downtown",
+                            "VehicleLocationAtStop": "",
+                            "VehicleAtStop": "false",
+                            "AimedArrivalTime": "2023-01-25T21:15:08Z",
+                            "ExpectedArrivalTime": "2023-01-25T21:12:18Z",
+                            "AimedDepartureTime": "2023-01-25T21:15:08Z",
+                            "ExpectedDepartureTime": null,
+                            "Distances": ""
+                        }
+                    }
+                },
+                {
+                    "RecordedAtTime": "2023-01-25T20:52:37Z",
+                    "MonitoringRef": "15726",
+                    "MonitoredVehicleJourney": {
+                        "LineRef": "K",
+                        "DirectionRef": "IB",
+                        "FramedVehicleJourneyRef": {
+                            "DataFrameRef": "2023-01-25",
+                            "DatedVehicleJourneyRef": "11090112_M11"
+                        },
+                        "PublishedLineName": "INGLESIDE",
+                        "OperatorRef": "SF",
+                        "OriginRef": "15418",
+                        "OriginName": "Balboa Park BART/Mezzanine Level",
+                        "DestinationRef": "16992",
+                        "DestinationName": "Embarcadero Station",
+                        "Monitored": true,
+                        "InCongestion": null,
+                        "VehicleLocation": {
+                            "Longitude": "-122.445351",
+                            "Latitude": "37.7227898"
+                        },
+                        "Bearing": "282.0000000000",
+                        "Occupancy": "seatsAvailable",
+                        "VehicleRef": "1442",
+                        "MonitoredCall": {
+                            "StopPointRef": "15726",
+                            "StopPointName": "Metro Church Station/Downtown",
+                            "VehicleLocationAtStop": "",
+                            "VehicleAtStop": "false",
+                            "AimedArrivalTime": "2023-01-25T21:20:08Z",
+                            "ExpectedArrivalTime": "2023-01-25T21:19:55Z",
+                            "AimedDepartureTime": "2023-01-25T21:20:08Z",
+                            "ExpectedDepartureTime": null,
+                            "Distances": ""
+                        }
+                    }
+                },
+                {
+                    "RecordedAtTime": "2023-01-25T20:52:37Z",
+                    "MonitoringRef": "15726",
+                    "MonitoredVehicleJourney": {
+                        "LineRef": "K",
+                        "DirectionRef": "IB",
+                        "FramedVehicleJourneyRef": {
+                            "DataFrameRef": "2023-01-25",
+                            "DatedVehicleJourneyRef": "11090113_M11"
+                        },
+                        "PublishedLineName": "INGLESIDE",
+                        "OperatorRef": "SF",
+                        "OriginRef": "15418",
+                        "OriginName": "Balboa Park BART/Mezzanine Level",
+                        "DestinationRef": "16992",
+                        "DestinationName": "Embarcadero Station",
+                        "Monitored": true,
+                        "InCongestion": null,
+                        "VehicleLocation": {
+                            "Longitude": "-122.447166",
+                            "Latitude": "37.7211571"
+                        },
+                        "Bearing": "218.0000000000",
+                        "Occupancy": "seatsAvailable",
+                        "VehicleRef": "1493",
+                        "MonitoredCall": {
+                            "StopPointRef": "15726",
+                            "StopPointName": "Metro Church Station/Downtown",
+                            "VehicleLocationAtStop": "",
+                            "VehicleAtStop": "false",
+                            "AimedArrivalTime": "2023-01-25T21:30:08Z",
+                            "ExpectedArrivalTime": "2023-01-25T21:29:13Z",
+                            "AimedDepartureTime": "2023-01-25T21:30:08Z",
+                            "ExpectedDepartureTime": null,
+                            "Distances": ""
+                        }
+                    }
+                }
+            ]
+        }
+    }
+}
