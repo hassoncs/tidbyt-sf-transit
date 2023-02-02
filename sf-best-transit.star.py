@@ -3,19 +3,24 @@ load("time.star", "time")
 load("http.star", "http")
 load("cache.star", "cache")
 load("math.star", "math")
+load("animation.star", "animation")
 load("encoding/json.star", "json")
 
-WALK_TO_BART_MINS = 9
-WALK_TO_CHURCH_MINS = 8
+USE_FIXTURE_DATA = True  # True
+FPS_ESTIMATE = 20
+
+WALK_TO_BART_MINS = 10
+WALK_TO_CHURCH_MINS = 9
 
 COLORS_BY_LINE = {
-    "J": "#D7892A",
-    "K": "#74A0BB",
-    "L": "#8F338E",
-    "M": "#338246",
-    "N": "#234C89",
-    "T": "#BB3735",
-    "BART": "#3F80DC",
+    "J": {"background": "#D7892A", "text": "#FFF"},
+    "K": {"background": "#74A0BB", "text": "#FFF"},
+    "L": {"background": "#8F338E", "text": "#FFF"},
+    "M": {"background": "#338246", "text": "#FFF"},
+    "N": {"background": "#234C89", "text": "#FFF"},
+    "T": {"background": "#BB3735", "text": "#FFF"},
+    "S": {"background": "#FFFF35", "text": "#000"},
+    "BART": {"background": "#3F80DC", "text": "#FFF"},
 }
 
 BART_API_URI = "https://api.bart.gov/api/etd.aspx?cmd=etd&orig=16th&key=MW9S-E7SL-26DU-VV8V&dir=N&json=y"
@@ -24,12 +29,23 @@ BART_CACHE_KEY = "bart_data"
 MUNI_CHURCH_ST_STOP_ID = 15726
 MUNI_API_URI = "http://api.511.org/transit/StopMonitoring?api_key=063bab8e-6059-46b0-9c74-ddad0540a6d1&agency=SF&format=json&stopCode=15726"
 MUNI_CACHE_KEY = "muni_data"
-CACHE_TTL = 120
+CACHE_TTL = 60
 
 
 def main(config):
-    bart_ests_mins = get_bart_data()
-    muni_estimates = get_muni_data()
+    if USE_FIXTURE_DATA:
+        bart_ests_mins_all = [10, 12, 19]
+        muni_estimates_all = [
+            {"mins": 11, "line": "J"},
+            {"mins": 15, "line": "M"},
+            {"mins": 18, "line": "S"},
+        ]
+    else:
+        bart_ests_mins_all = get_bart_data()
+        muni_estimates_all = get_muni_data()
+
+    bart_ests_mins = bart_ests_mins_all[0:3]
+    muni_estimates = muni_estimates_all[0:3]
 
     print(
         "There are bart trains coming in "
@@ -38,16 +54,15 @@ def main(config):
     )
     print(
         "There are muni trains coming in "
-        + ", ".join([str(est["expected_arrival_mins"]) for est in muni_estimates])
+        + ", ".join([str(est["mins"]) for est in muni_estimates])
         + " mins"
     )
 
-    lines = ["J", "K", "L", "M", "N", "T"]
-    bart_ests_mins = []
-    # render it!
-    return render.Root(
-        delay=500, child=render_all(lines=lines, bart_ests_mins=bart_ests_mins)
-    )
+    transit_data = {
+        "bart_ests_mins": bart_ests_mins,
+        "muni_estimates": muni_estimates,
+    }
+    return render.Root(delay=0, child=render_all(transit_data))
 
 
 def get_bart_data():
@@ -61,11 +76,13 @@ def get_bart_data():
             all_estimates.append(estimate)
 
     bart_trains_estimates_strs = [est["minutes"] for est in all_estimates]
+    print(bart_trains_estimates_strs)
     unsorted_bart_trains_estimates_mins = [
-        int(est_str) for est_str in bart_trains_estimates_strs
+        int(est_str) for est_str in bart_trains_estimates_strs if est_str.isdigit()
     ]
     bart_ests_mins = sorted(unsorted_bart_trains_estimates_mins)
-    return bart_ests_mins
+    bart_ests_mins_filtered = [x for x in bart_ests_mins if x >= WALK_TO_BART_MINS]
+    return bart_ests_mins_filtered
 
 
 def get_muni_data():
@@ -73,20 +90,25 @@ def get_muni_data():
     stop_visits = muni_data["ServiceDelivery"]["StopMonitoringDelivery"][
         "MonitoredStopVisit"
     ]
+    print(stop_visits)
 
     def process_stop_visit(stop_visit):
         journey = stop_visit["MonitoredVehicleJourney"]
         expected_arrival_time = journey["MonitoredCall"]["ExpectedArrivalTime"]
         expected_arrival = time.parse_time(expected_arrival_time)
         duration = expected_arrival - time.now()
-        expected_arrival_mins = math.floor(duration.minutes)
+        mins = math.floor(duration.minutes)
         return {
             "line": journey["LineRef"],
-            "expected_arrival_mins": expected_arrival_mins,
+            "mins": mins,
         }
 
     muni_estimates = [process_stop_visit(stop_visit) for stop_visit in stop_visits]
-    return muni_estimates
+    muni_estimates_filtered = [
+        est for est in muni_estimates if est["mins"] >= WALK_TO_CHURCH_MINS
+    ]
+
+    return muni_estimates_filtered
 
 
 def fetch_data(cache_key, url):
@@ -106,67 +128,110 @@ def fetch_data(cache_key, url):
     return json.decode(data_json_str)
 
 
-def render_all(lines, bart_ests_mins):
-    return render.Column(
-        children=[draw_muni_dots(lines), render_bart_times(bart_ests_mins)]
-    )
-
-
-def render_bart_times(bart_ests_mins):
-    times = " ".join([str(mins) for mins in bart_ests_mins])
-    return render.Row(children=[render.Text(content="bart " + times)])
-
-
-def render_test():
-    return render.Box(
-        child=render.Animation(
-            children=[
-                render.Text(
-                    content="next",
-                    # content = now.format("3:04 PM"),
-                    font="6x13",
-                ),
-                render.Text(
-                    content="train",
-                    # content = now.format("3 04 PM"),
-                    font="6x13",
-                ),
-                render.Circle(
-                    color="#666",
-                    diameter=30,
-                    child=render.Circle(color="#0ff", diameter=10),
-                ),
-            ],
-        ),
-    )
-
-
-def draw_muni_dots(lines):
-    return render.Row(
-        children=[draw_muni_dot(line) for line in lines],
-    )
-
-
-def draw_muni_dot(line):
-    color = COLORS_BY_LINE[line]
+def render_all(transit_data):
+    lines = []
+    bart_ests_mins = transit_data["bart_ests_mins"]
+    muni_estimates = transit_data["muni_estimates"]
     return render.Stack(
         children=[
-            render.Circle(
-                color=color,
-                diameter=10,
-                child=render.Text(
-                    content=line,
-                ),
+            render.Column(
+                expanded=True,
+                main_align="space_evenly",  # Controls horizontal alignment
+                cross_align="center",  # Controls vertical alignment
+                children=[
+                    render_muni_times(muni_estimates),
+                    render_bart_times(bart_ests_mins),
+                ],
+            ),
+            # render_progress_bar(),
+        ]
+    )
+
+
+def render_progress_bar():
+    width = 6
+    end_x = 64  # - width
+    return animation.Transformation(
+        child=render.Box(width=width, height=1, color="#ccc"),
+        duration=FPS_ESTIMATE * 61,
+        delay=0,
+        # origin=animation.Origin(0.5, 0.5),
+        # direction="alternate",
+        fill_mode="forwards",
+        keyframes=[
+            animation.Keyframe(
+                percentage=0.0,
+                transforms=[
+                    animation.Translate(0, 31),
+                ],
+                # curve="ease_in_out",
+            ),
+            animation.Keyframe(
+                percentage=1.0,
+                transforms=[
+                    animation.Translate(end_x, 31),
+                ],
             ),
         ],
     )
 
 
-def draw_muni_dot_test():
-    return render.Stack(
-        children=[
-            render.Box(width=50, height=25, color="#911"),
-            render.Text("hello there"),
-            render.Box(width=4, height=32, color="#119"),
-        ],
+def render_bart_times(bart_ests_mins):
+    times = " ".join([str(mins) for mins in bart_ests_mins])
+    return render.Padding(
+        child=render.Row(
+            children=[
+                render.Text(content="BART ", font="tb-8"),
+                # render.Text(content="a ", color="#4498D4", font="tb-8"),
+                render.Text(content=times, font="tb-8"),
+            ]
+        ),
+        pad=(4, 0, 2, 0),
+    )
+
+
+def render_muni_times(muni_estimates):
+    lines = [est["line"] for est in muni_estimates]
+    times = " ".join([str(estimate["mins"]) for estimate in muni_estimates])
+    items = [render_muni_estimate(est) for est in muni_estimates]
+    # items = [render.Text(content="mins")]
+    return render.Row(children=items)
+
+
+def render_muni_estimate(estimate):
+    return render.Padding(
+        child=render.Row(
+            children=[
+                render_muni_dot(estimate["line"]),
+                render.Text(content=str(estimate["mins"])),
+            ]
+        ),
+        pad=(3, 0, 0, 0),
+    )
+
+
+def render_muni_dots(lines):
+    return render.Padding(
+        child=render.Row(
+            children=[render_muni_dot(line) for line in lines],
+        ),
+        pad=(0, 0, 0, 0),
+    )
+
+
+def render_muni_dot(line):
+    colors = COLORS_BY_LINE[line]
+    background_color = colors["background"]
+    text_color = colors["text"]
+    return render.Padding(
+        child=render.Stack(
+            children=[
+                render.Circle(
+                    color=background_color,
+                    diameter=8,
+                    child=render.Text(content=line, color=text_color),
+                ),
+            ],
+        ),
+        pad=(0, 0, 0, 0),
     )
