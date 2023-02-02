@@ -1,0 +1,16 @@
+{
+  "name": "tidbyt-transit",
+  "version": "1.0.0",
+  "description": "",
+  "main": "index.js",
+  "scripts": {
+    "serve:watch": "dotenv -- nodemon --watch ./sf-best-transit.star.py --exec 'pixlet render sf-best-transit.star && pixlet push --installation-id sfbesttransit $DEVICE_ID sf-best-transit.webp'"
+  },
+  "author": "",
+  "license": "ISC",
+  "dependencies": {
+    "dotenv": "^16.0.3",
+    "dotenv-cli": "^7.0.0",
+    "nodemon": "^2.0.20"
+  }
+}

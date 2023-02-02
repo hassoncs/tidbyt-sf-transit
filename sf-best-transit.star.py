@@ -1,4 +1,5 @@
 load("render.star", "render")
+load("schema.star", "schema")
 load("time.star", "time")
 load("http.star", "http")
 load("cache.star", "cache")
@@ -6,11 +7,9 @@ load("math.star", "math")
 load("animation.star", "animation")
 load("encoding/json.star", "json")
 
-USE_FIXTURE_DATA = True  # True
+USE_FIXTURE_DATA = False  # True
 FPS_ESTIMATE = 20
-
-WALK_TO_BART_MINS = 10
-WALK_TO_CHURCH_MINS = 9
+CACHE_TTL = 60
 
 COLORS_BY_LINE = {
     "J": {"background": "#D7892A", "text": "#FFF"},
@@ -23,22 +22,37 @@ COLORS_BY_LINE = {
     "BART": {"background": "#3F80DC", "text": "#FFF"},
 }
 
-BART_API_URI = "https://api.bart.gov/api/etd.aspx?cmd=etd&orig=16th&key=MW9S-E7SL-26DU-VV8V&dir=N&json=y"
+BART_FILTER_BELOW_MINS = 10
+BART_STOP_ID = "16th"
+BART_DIR = "N"
+BART_API_KEY = "MW9S-E7SL-26DU-VV8V"
+BART_API_URI = (
+    "https://api.bart.gov/api/etd.aspx?cmd=etd&key=%s&orig=%s&dir=%s&json=y"
+    % (BART_API_KEY, BART_STOP_ID, BART_DIR)
+)
 BART_CACHE_KEY = "bart_data"
 
-MUNI_CHURCH_ST_STOP_ID = 15726
-MUNI_API_URI = "http://api.511.org/transit/StopMonitoring?api_key=063bab8e-6059-46b0-9c74-ddad0540a6d1&agency=SF&format=json&stopCode=15726"
+MUNI_FILTER_BELOW_MINS = 9
+MUNI_STOP_ID = 15726
+MUNI_API_KEY = "063bab8e-6059-46b0-9c74-ddad0540a6d1"
+MUNI_API_URI = (
+    "http://api.511.org/transit/StopMonitoring?api_key=%s&agency=SF&format=json&stopCode=%d"
+    % (MUNI_API_KEY, MUNI_STOP_ID)
+)
 MUNI_CACHE_KEY = "muni_data"
-CACHE_TTL = 60
 
 
 def main(config):
+    muni_stop_id = config.get("muni_stop_id")
+    print(muni_stop_id)
+
     if USE_FIXTURE_DATA:
-        bart_ests_mins_all = [10, 12, 19]
+        bart_ests_mins_all = [10, 12, 19, 73]
         muni_estimates_all = [
             {"mins": 11, "line": "J"},
             {"mins": 15, "line": "M"},
             {"mins": 18, "line": "S"},
+            {"mins": 36, "line": "K"},
         ]
     else:
         bart_ests_mins_all = get_bart_data()
@@ -65,6 +79,32 @@ def main(config):
     return render.Root(delay=0, child=render_all(transit_data))
 
 
+def get_schema():
+    return schema.Schema(
+        version="1",
+        fields=[
+            schema.Location(
+                id="location",
+                name="Location",
+                desc="Location for which to display time.",
+                icon="locationDot",
+            ),
+            schema.Text(
+                id="muni_stop_id",
+                name="MUNI stop_id",
+                desc="Enter a muni stop_id",
+                icon="user",
+            ),
+            schema.Text(
+                id="bart_stop_id",
+                name="BART stop_id",
+                desc="Enter a bart stop_id",
+                icon="user",
+            ),
+        ],
+    )
+
+
 def get_bart_data():
     bart_data = fetch_data(BART_CACHE_KEY, BART_API_URI)
 
@@ -76,12 +116,11 @@ def get_bart_data():
             all_estimates.append(estimate)
 
     bart_trains_estimates_strs = [est["minutes"] for est in all_estimates]
-    print(bart_trains_estimates_strs)
     unsorted_bart_trains_estimates_mins = [
         int(est_str) for est_str in bart_trains_estimates_strs if est_str.isdigit()
     ]
     bart_ests_mins = sorted(unsorted_bart_trains_estimates_mins)
-    bart_ests_mins_filtered = [x for x in bart_ests_mins if x >= WALK_TO_BART_MINS]
+    bart_ests_mins_filtered = [x for x in bart_ests_mins if x >= BART_FILTER_BELOW_MINS]
     return bart_ests_mins_filtered
 
 
@@ -90,7 +129,6 @@ def get_muni_data():
     stop_visits = muni_data["ServiceDelivery"]["StopMonitoringDelivery"][
         "MonitoredStopVisit"
     ]
-    print(stop_visits)
 
     def process_stop_visit(stop_visit):
         journey = stop_visit["MonitoredVehicleJourney"]
@@ -105,7 +143,7 @@ def get_muni_data():
 
     muni_estimates = [process_stop_visit(stop_visit) for stop_visit in stop_visits]
     muni_estimates_filtered = [
-        est for est in muni_estimates if est["mins"] >= WALK_TO_CHURCH_MINS
+        est for est in muni_estimates if est["mins"] >= MUNI_FILTER_BELOW_MINS
     ]
 
     return muni_estimates_filtered
@@ -206,7 +244,7 @@ def render_muni_estimate(estimate):
                 render.Text(content=str(estimate["mins"])),
             ]
         ),
-        pad=(3, 0, 0, 0),
+        pad=(2, 0, 0, 0),
     )
 
 
@@ -233,5 +271,5 @@ def render_muni_dot(line):
                 ),
             ],
         ),
-        pad=(0, 0, 0, 0),
+        pad=(0, 0, 1, 0),
     )
