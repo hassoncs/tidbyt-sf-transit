@@ -123,7 +123,7 @@ def main(config):
 
     print(
         "There are bart trains coming in "
-        + ", ".join([str(s) for s in bart_ests_mins])
+        + ", ".join([str(est["mins"]) for est in bart_ests_mins])
         + " mins"
     )
     print(
@@ -216,7 +216,6 @@ def get_bart_data(config):
 
     if config.bool("use_test_data", False):
         bart_ests_mins = BART_FIXTURE
-        print(bart_ests_mins)
     else:
         bart_api_url = build_bart_api_url(bart_stop_id, bart_dir)
         bart_data = fetch_data(bart_api_url, bart_api_url)
@@ -305,7 +304,6 @@ def fetch_data(cache_key, url):
 
 
 def render_all(transit_data):
-    lines = []
     bart_ests_mins = transit_data["bart_ests_mins"]
     muni_estimates = transit_data["muni_estimates"]
     return render.Stack(
@@ -319,7 +317,7 @@ def render_all(transit_data):
                     render_bart_times(bart_ests_mins),
                 ],
             ),
-            # render_progress_bar(),
+            render_progress_bar(),
         ]
     )
 
@@ -353,7 +351,6 @@ def render_progress_bar():
 
 
 def render_bart_times(bart_ests_mins):
-    times = " ".join([str(est["mins"]) for est in bart_ests_mins])
     return render.Padding(
         child=render.Row(
             children=[
@@ -361,9 +358,12 @@ def render_bart_times(bart_ests_mins):
                 render.Row(
                     children=[render_bart_estimate(est) for est in bart_ests_mins]
                 ),
-            ]
+            ],
+            expanded=True,
+            main_align="center",
+            cross_align="center",
         ),
-        pad=(2, 0, 2, 0),
+        pad=(0, 0, 0, 0),
     )
 
 
@@ -378,15 +378,18 @@ def render_bart_estimate(est):
                 render.Text(content=str(est["mins"]), font="tb-8"),
             ]
         ),
-        pad=(0, 0, 1, 0),
+        pad=(0, 0, 0, 0),
     )
 
 
 def render_muni_times(muni_estimates):
-    lines = [est["line"] for est in muni_estimates]
-    times = " ".join([str(estimate["mins"]) for estimate in muni_estimates])
     items = [render_muni_estimate(est) for est in muni_estimates]
-    return render.Row(children=items)
+    return render.Row(
+        children=items,
+        expanded=True,
+        main_align="center",
+        cross_align="center",
+    )
 
 
 def render_muni_estimate(estimate):
