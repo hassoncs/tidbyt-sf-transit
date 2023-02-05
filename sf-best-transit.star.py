@@ -7,9 +7,8 @@ load("math.star", "math")
 load("animation.star", "animation")
 load("encoding/json.star", "json")
 
-USE_FIXTURE_DATA = False  # True
-FPS_ESTIMATE = 20
 CACHE_TTL = 60
+FPS_ESTIMATE = 20
 
 COLORS_BY_LINE = {
     "J": {"background": "#D7892A", "text": "#FFF"},
@@ -23,33 +22,23 @@ COLORS_BY_LINE = {
 }
 
 BART_FILTER_BELOW_MINS = 10
-BART_STOP_ID = "16th"
-BART_DIR = "N"
-BART_API_KEY = "MW9S-E7SL-26DU-VV8V"
-BART_API_URI = (
-    "https://api.bart.gov/api/etd.aspx?cmd=etd&key=%s&orig=%s&dir=%s&json=y"
-    % (BART_API_KEY, BART_STOP_ID, BART_DIR)
-)
-BART_CACHE_KEY = "bart_data"
+BART_PUBLIC_API_KEY = "MW9S-E7SL-26DU-VV8V"
+BART_FIXTURE = [2, 4, 10, 12, 19, 73]
 
 MUNI_FILTER_BELOW_MINS = 9
 MUNI_API_KEY = "063bab8e-6059-46b0-9c74-ddad0540a6d1"
-MUNI_CACHE_KEY = "muni_data"
+MUNI_FIXTURE = [
+    {"mins": 4, "line": "K"},
+    {"mins": 11, "line": "J"},
+    {"mins": 15, "line": "M"},
+    {"mins": 18, "line": "S"},
+    {"mins": 36, "line": "K"},
+]
 
 
 def main(config):
-    if USE_FIXTURE_DATA:
-        bart_ests_mins_all = [2, 4, 10, 12, 19, 73]
-        muni_estimates_all = [
-            {"mins": 4, "line": "K"},
-            {"mins": 11, "line": "J"},
-            {"mins": 15, "line": "M"},
-            {"mins": 18, "line": "S"},
-            {"mins": 36, "line": "K"},
-        ]
-    else:
-        bart_ests_mins_all = get_bart_data(config)
-        muni_estimates_all = get_muni_data(config)
+    bart_ests_mins_all = get_bart_data(config)
+    muni_estimates_all = get_muni_data(config)
 
     bart_ests_mins = bart_ests_mins_all[0:3]
     muni_estimates = muni_estimates_all[0:3]
@@ -98,22 +87,44 @@ def get_schema():
     )
 
 
+def build_bart_api_url(bart_stop_id, bart_dir):
+    return "https://api.bart.gov/api/etd.aspx?cmd=etd&key=%s&orig=%s&dir=%s&json=y" % (
+        BART_PUBLIC_API_KEY,
+        bart_stop_id,
+        bart_dir,
+    )
+
+
 def get_bart_data(config):
-    bart_data = fetch_data(BART_CACHE_KEY, BART_API_URI)
+    bart_stop_id = config.str("bart_stop_id")
+    if bart_stop_id == None:
+        fail("bart_stop_id not set in config")
 
-    station_data = bart_data["root"]["station"][0]
-    etds = station_data["etd"]
-    all_estimates = []
-    for etd in etds:
-        for estimate in etd["estimate"]:
-            all_estimates.append(estimate)
+    bart_dir = config.str("bart_dir")
+    if bart_dir == None:
+        fail("bart_dir not set in config")
 
-    bart_trains_estimates_strs = [est["minutes"] for est in all_estimates]
-    unsorted_bart_trains_estimates_mins = [
-        int(est_str) for est_str in bart_trains_estimates_strs if est_str.isdigit()
-    ]
+    if config.bool("use_fixture_data", False):
+        unsorted_bart_trains_estimates_mins = BART_FIXTURE
+    else:
+        bart_api_url = build_bart_api_url(bart_stop_id, bart_dir)
+        bart_data = fetch_data(bart_api_url, bart_api_url)
+
+        station_data = bart_data["root"]["station"][0]
+        etds = station_data["etd"]
+        all_estimates = []
+        for etd in etds:
+            for estimate in etd["estimate"]:
+                all_estimates.append(estimate)
+
+        bart_trains_estimates_strs = [est["minutes"] for est in all_estimates]
+        unsorted_bart_trains_estimates_mins = [
+            int(est_str) for est_str in bart_trains_estimates_strs if est_str.isdigit()
+        ]
+
+    bart_filter_below_mins = int(config.get("bart_filter_below_mins", "0"))
     bart_ests_mins = sorted(unsorted_bart_trains_estimates_mins)
-    bart_ests_mins_filtered = [x for x in bart_ests_mins if x >= BART_FILTER_BELOW_MINS]
+    bart_ests_mins_filtered = [x for x in bart_ests_mins if x >= bart_filter_below_mins]
     return bart_ests_mins_filtered
 
 
@@ -129,29 +140,35 @@ def get_muni_data(config):
     if muni_stop_id == None:
         fail("muni_stop_id not set in config")
 
-    muni_api_url = build_muni_api_url(muni_stop_id)
-    muni_data = fetch_data(MUNI_CACHE_KEY, muni_api_url)
-    stop_visits = muni_data["ServiceDelivery"]["StopMonitoringDelivery"][
-        "MonitoredStopVisit"
-    ]
+    if config.bool("use_fixture_data", False):
+        muni_estimates = MUNI_FIXTURE
+    else:
+        muni_api_url = build_muni_api_url(muni_stop_id)
+        muni_data = fetch_data(muni_api_url, muni_api_url)
+        stop_visits = muni_data["ServiceDelivery"]["StopMonitoringDelivery"][
+            "MonitoredStopVisit"
+        ]
+        muni_estimates = [
+            extract_muni_stop_visit(stop_visit) for stop_visit in stop_visits
+        ]
 
-    def process_stop_visit(stop_visit):
-        journey = stop_visit["MonitoredVehicleJourney"]
-        expected_arrival_time = journey["MonitoredCall"]["ExpectedArrivalTime"]
-        expected_arrival = time.parse_time(expected_arrival_time)
-        duration = expected_arrival - time.now()
-        mins = math.floor(duration.minutes)
-        return {
-            "line": journey["LineRef"],
-            "mins": mins,
-        }
-
-    muni_estimates = [process_stop_visit(stop_visit) for stop_visit in stop_visits]
+    muni_filter_below_mins = int(config.get("muni_filter_below_mins", "0"))
     muni_estimates_filtered = [
-        est for est in muni_estimates if est["mins"] >= MUNI_FILTER_BELOW_MINS
+        est for est in muni_estimates if est["mins"] >= muni_filter_below_mins
     ]
-
     return muni_estimates_filtered
+
+
+def extract_muni_stop_visit(stop_visit):
+    journey = stop_visit["MonitoredVehicleJourney"]
+    expected_arrival_time = journey["MonitoredCall"]["ExpectedArrivalTime"]
+    expected_arrival = time.parse_time(expected_arrival_time)
+    duration = expected_arrival - time.now()
+    mins = math.floor(duration.minutes)
+    return {
+        "line": journey["LineRef"],
+        "mins": mins,
+    }
 
 
 def fetch_data(cache_key, url):
