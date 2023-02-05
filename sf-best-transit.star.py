@@ -1,7 +1,7 @@
 """
 Applet: SFBestTransit
 Summary: See next transit arrivals for both Muni and Bart
-Description: See next transit arrivals from SFMTA and BART. Optimized for 2 nearby stops.
+Description: See next transit arrivals from SFMTA and BART. Optimized to show Bart and Muni at the same time.
 Author: hassoncs
 """
 
@@ -14,16 +14,20 @@ load("math.star", "math")
 load("animation.star", "animation")
 load("encoding/json.star", "json")
 
-CACHE_TTL = 60
-FPS_ESTIMATE = 20
-MAX_AGE_SECS = 60
+# Global config
 
+CACHE_TTL = 60
+MAX_AGE_SECS = 90
 MUNI_API_CACHE_KEY = "muni_api_key"
+
+# Defaults and API keys
+
 BART_PUBLIC_API_KEY = "MW9S-E7SL-26DU-VV8V"
 DEFAULT_MUNI_API_KEY = "063bab8e-6059-46b0-9c74-ddad0540a6d1"
 DEFAULT_MUNI_STOP_ID = "15726"
 DEFAULT_BART_STOP_ID = "16th"
 
+# Test data used during app development
 MUNI_FIXTURE = [
     {"mins": 4, "line": "K"},
     {"mins": 11, "line": "J"},
@@ -40,6 +44,7 @@ BART_FIXTURE = [
     {"mins": 73, "color": "#ffff33"},
 ]
 
+# Color / stop configuration
 
 COLORS_BY_LINE = {
     "J": {"background": "#D7892A", "text": "#FFF"},
