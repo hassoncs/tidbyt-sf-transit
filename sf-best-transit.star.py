@@ -18,11 +18,19 @@ CACHE_TTL = 60
 FPS_ESTIMATE = 20
 MAX_AGE_SECS = 60
 
+MUNI_API_CACHE_KEY = "muni_api_key"
 BART_PUBLIC_API_KEY = "MW9S-E7SL-26DU-VV8V"
-MUNI_API_KEY = "063bab8e-6059-46b0-9c74-ddad0540a6d1"
+DEFAULT_MUNI_API_KEY = "063bab8e-6059-46b0-9c74-ddad0540a6d1"
 DEFAULT_MUNI_STOP_ID = "15726"
 DEFAULT_BART_STOP_ID = "16th"
 
+MUNI_FIXTURE = [
+    {"mins": 4, "line": "K"},
+    {"mins": 11, "line": "J"},
+    {"mins": 15, "line": "M"},
+    {"mins": 18, "line": "S"},
+    {"mins": 36, "line": "K"},
+]
 BART_FIXTURE = [
     {"mins": 2, "color": "#339933"},
     {"mins": 4, "color": "#339933"},
@@ -31,13 +39,7 @@ BART_FIXTURE = [
     {"mins": 19, "color": "#0099cc"},
     {"mins": 73, "color": "#ffff33"},
 ]
-MUNI_FIXTURE = [
-    {"mins": 4, "line": "K"},
-    {"mins": 11, "line": "J"},
-    {"mins": 15, "line": "M"},
-    {"mins": 18, "line": "S"},
-    {"mins": 36, "line": "K"},
-]
+
 
 COLORS_BY_LINE = {
     "J": {"background": "#D7892A", "text": "#FFF"},
@@ -105,8 +107,16 @@ BART_STOP_NAMES_BY_STOP_ID = {
 
 
 def main(config):
+    configure(config)
     all_transit_estimates = fetch_all_transit_estimates(config)
     return render.Root(child=render_all(all_transit_estimates), max_age=MAX_AGE_SECS)
+
+
+def configure(config):
+    muni_api_key_from_config = config.str("muni_api_key", DEFAULT_MUNI_API_KEY)
+    cache.set(
+        MUNI_API_CACHE_KEY, muni_api_key_from_config, ttl_seconds=30 * 24 * 60 * 60
+    )
 
 
 def get_schema():
@@ -143,6 +153,13 @@ def get_schema():
                 desc="Hide arrivals below this many mins",
                 icon="stopwatch",
                 default="0",
+            ),
+            schema.Text(
+                id="muni_api_key",
+                name="Muni API key",
+                desc="Muni API key",
+                icon="key",
+                default=DEFAULT_MUNI_API_KEY,
             ),
             schema.Dropdown(
                 id="bart_stop_id",
@@ -181,6 +198,7 @@ def search_muni_stop(pattern):
     pattern_lower = pattern.lower()
     get_all_stops_url = build_muni_get_all_stops_api_url()
     all_muni_stops = fetch_data(get_all_stops_url, get_all_stops_url)
+
     stops = all_muni_stops["Contents"]["dataObjects"]["ScheduledStopPoint"]
     matching_stops = [
         stop for stop in stops if pattern or pattern_lower in stop["Name"].lower()
@@ -251,6 +269,13 @@ def fetch_bart_data(config):
     return bart_estimates_filtered[0:3]
 
 
+def get_muni_api_key():
+    muni_api_key = cache.get(MUNI_API_CACHE_KEY)
+    if muni_api_key == None:
+        muni_api_key = DEFAULT_MUNI_API_KEY
+    return muni_api_key
+
+
 def build_bart_api_url(bart_stop_id, bart_dir):
     return "https://api.bart.gov/api/etd.aspx?cmd=etd&key=%s&orig=%s&dir=%s&json=y" % (
         BART_PUBLIC_API_KEY,
@@ -260,15 +285,17 @@ def build_bart_api_url(bart_stop_id, bart_dir):
 
 
 def build_muni_api_url(muni_stop_id):
+    muni_api_key = get_muni_api_key()
     return (
         "http://api.511.org/transit/StopMonitoring?api_key=%s&agency=SF&format=json&stopCode=%s"
-        % (MUNI_API_KEY, muni_stop_id)
+        % (muni_api_key, muni_stop_id)
     )
 
 
 def build_muni_get_all_stops_api_url():
+    muni_api_key = get_muni_api_key()
     return "http://api.511.org/transit/stops?api_key=%s&operator_id=SF&format=json" % (
-        MUNI_API_KEY
+        muni_api_key
     )
 
 
@@ -331,61 +358,25 @@ def fetch_data(cache_key, url):
 def render_all(transit_data):
     bart_estimates = transit_data["bart_estimates"]
     muni_estimates = transit_data["muni_estimates"]
-    return render.Stack(
+    return render.Column(
+        expanded=True,
+        main_align="space_evenly",
+        cross_align="center",
         children=[
-            render.Column(
-                expanded=True,
-                main_align="space_evenly",
-                cross_align="center",
-                children=[
-                    render_muni_times(muni_estimates),
-                    render_bart_times(bart_estimates),
-                ],
-            ),
-            # render_progress_bar(),
-        ]
-    )
-
-
-def render_progress_bar():
-    width = 6
-    end_x = 64
-    return animation.Transformation(
-        child=render.Box(width=width, height=1, color="#ccc"),
-        duration=FPS_ESTIMATE * 61,
-        delay=0,
-        fill_mode="forwards",
-        keyframes=[
-            animation.Keyframe(
-                percentage=0.0,
-                transforms=[
-                    animation.Translate(0, 31),
-                ],
-                # curve="ease_in_out",
-            ),
-            animation.Keyframe(
-                percentage=1.0,
-                transforms=[
-                    animation.Translate(end_x, 31),
-                ],
-            ),
+            render_muni_estimates(muni_estimates),
+            render_bart_times(bart_estimates),
         ],
     )
 
 
 def render_bart_times(bart_estimates):
-    return render.Padding(
-        child=render.Row(
-            children=[
-                render.Row(
-                    children=[render_bart_estimate(est) for est in bart_estimates]
-                ),
-            ],
-            expanded=True,
-            main_align="center",
-            cross_align="center",
-        ),
-        pad=(0, 0, 0, 0),
+    return render.Row(
+        children=[
+            render.Row(children=[render_bart_estimate(est) for est in bart_estimates]),
+        ],
+        expanded=True,
+        main_align="center",
+        cross_align="center",
     )
 
 
@@ -409,7 +400,7 @@ def render_bart_estimate(est):
     )
 
 
-def render_muni_times(muni_estimates):
+def render_muni_estimates(muni_estimates):
     items = [render_muni_estimate(est) for est in muni_estimates]
     return render.Row(
         children=items,
@@ -427,27 +418,21 @@ def render_muni_estimate(estimate):
                 render.Text(content=str(estimate["mins"])),
             ]
         ),
-        pad=(2, 0, 0, 0),
-    )
-
-
-def render_muni_dots(lines):
-    return render.Row(
-        children=[render_muni_dot(line) for line in lines],
+        pad=(1, 0, 0, 0),
     )
 
 
 def render_muni_dot(line):
     colors = COLORS_BY_LINE[line]
-    background_color = colors["background"]
     text_color = colors["text"]
+    background_color = colors["background"]
     return render.Padding(
         child=render.Stack(
             children=[
                 render.Circle(
                     color=background_color,
-                    diameter=9,
-                    child=render.Text(content=line, color=text_color),
+                    diameter=8,
+                    child=render.Text(content=line, color=text_color, font="tb-8"),
                 ),
             ],
         ),
