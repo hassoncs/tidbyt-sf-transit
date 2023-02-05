@@ -18,6 +18,26 @@ load("encoding/json.star", "json")
 CACHE_TTL = 60
 FPS_ESTIMATE = 20
 
+
+BART_PUBLIC_API_KEY = "MW9S-E7SL-26DU-VV8V"
+MUNI_API_KEY = "063bab8e-6059-46b0-9c74-ddad0540a6d1"
+
+BART_FIXTURE = [
+    {"mins": 2, "color": "#339933"},
+    {"mins": 4, "color": "#339933"},
+    {"mins": 10, "color": "#0099cc"},
+    {"mins": 12, "color": "#ffff33"},
+    {"mins": 19, "color": "#0099cc"},
+    {"mins": 73, "color": "#ffff33"},
+]
+MUNI_FIXTURE = [
+    {"mins": 4, "line": "K"},
+    {"mins": 11, "line": "J"},
+    {"mins": 15, "line": "M"},
+    {"mins": 18, "line": "S"},
+    {"mins": 36, "line": "K"},
+]
+
 COLORS_BY_LINE = {
     "J": {"background": "#D7892A", "text": "#FFF"},
     "K": {"background": "#74A0BB", "text": "#FFF"},
@@ -29,16 +49,68 @@ COLORS_BY_LINE = {
     "BART": {"background": "#3F80DC", "text": "#FFF"},
 }
 
-BART_PUBLIC_API_KEY = "MW9S-E7SL-26DU-VV8V"
-MUNI_API_KEY = "063bab8e-6059-46b0-9c74-ddad0540a6d1"
+BART_STOP_NAMES_BY_STOP_ID = {
+    "12TH": "12th St. Oakland City Center",
+    "16TH": "16th St. Mission",
+    "19TH": "19th St. Oakland",
+    "24TH": "24th St. Mission",
+    "ANTC": "Antioch",
+    "ASHB": "Ashby",
+    "BALB": "Balboa Park",
+    "BAYF": "Bay Fair",
+    "BERY": "Berryessa",
+    "CAST": "Castro Valley",
+    "CIVC": "Civic Center/UN Plaza",
+    "COLM": "Colma",
+    "CONC": "Concord",
+    "DALY": "Daly City",
+    "DBRK": "Downtown Berkeley",
+    "DUBL": "Dublin/Pleasanton",
+    "DELN": "El Cerrito Del Norte",
+    "PLZA": "El Cerrito Plaza",
+    "EMBR": "Embarcadero",
+    "FRMT": "Fremont",
+    "FTVL": "Fruitvale",
+    "GLEN": "Glen Park",
+    "HAYW": "Hayward",
+    "LAFY": "Lafayette",
+    "LAKE": "Lake Merritt Daly City/Richmond",
+    "MCAR": "MacArthur Richmond/Antioch",
+    "MLBR": "Millbrae SFO/Antioch/Richmond",
+    "MLPT": "Milpitas Daly City/Richmond",
+    "MONT": "Montgomery St. East Bay",
+    "NBRK": "North Berkeley Richmond",
+    "NCON": "North Concord/Martinez Antioch",
+    "COLS": "Oakland Coliseum - OAC Daly City/Richmond",
+    "OAKL": "Oakland International Airport Coliseum",
+    "ORIN": "Orinda Antioch",
+    "PCTR": "Pittsburg Center Antioch",
+    "PITT": "Pittsburg/Bay Point Antioch",
+    "PHIL": "Pleasant Hill/Contra Costa Centre Antioch",
+    "POWL": "Powell St. East Bay",
+    "RICH": "Richmond Daly City/Millbrae/Berryessa",
+    "ROCK": "Rockridge Antioch",
+    "SBRN": "San Bruno Antioch/Richmond",
+    "SFIA": "San Francisco International AirporSF/Antioch",
+    "SANL": "San Leandro Daly City/Richmond",
+    "SHAY": "South Hayward Daly City/Richmond",
+    "SSAN": "South San Francisco Antioch/Richmond",
+    "UCTY": "Union City Daly City/Richmond",
+    "WCRK": "Walnut Creek",
+    "WARM": "Warm Springs/South Fremont",
+    "WDUB": "West Dublin/Pleasanton",
+    "WOAK": "West Oakland",
+}
 
-BART_FIXTURE = [2, 4, 10, 12, 19, 73]
-MUNI_FIXTURE = [
-    {"mins": 4, "line": "K"},
-    {"mins": 11, "line": "J"},
-    {"mins": 15, "line": "M"},
-    {"mins": 18, "line": "S"},
-    {"mins": 36, "line": "K"},
+BART_DIRECTIONS_SCHEMA_OPTIONS = [
+    schema.Option(
+        display="North",
+        value="N",
+    ),
+    schema.Option(
+        display="South",
+        value="S",
+    ),
 ]
 
 
@@ -68,15 +140,16 @@ def main(config):
 
 
 def get_schema():
+    bart_station_options = [
+        schema.Option(
+            display=BART_STOP_NAMES_BY_STOP_ID[key],
+            value=key,
+        )
+        for key in BART_STOP_NAMES_BY_STOP_ID.keys()
+    ]
     return schema.Schema(
         version="1",
         fields=[
-            schema.Location(
-                id="location",
-                name="Location",
-                desc="Location for which to display time.",
-                icon="locationDot",
-            ),
             schema.Text(
                 id="muni_stop_id",
                 name="MUNI stop_id",
@@ -91,19 +164,21 @@ def get_schema():
                 icon="user",
                 default="0",
             ),
-            schema.Text(
+            schema.Dropdown(
                 id="bart_stop_id",
-                name="BART stop_id",
-                desc="Enter a bart stop_id",
-                icon="user",
-                default="16th",
+                name="BART stop",
+                desc="The bart stop to use.",
+                icon="brush",
+                default=bart_station_options[0].value,
+                options=bart_station_options,
             ),
-            schema.Text(
+            schema.Dropdown(
                 id="bart_dir",
-                name="BART bart_dir",
-                desc="Enter a bart direction",
-                icon="user",
-                default="N",
+                name="BART Direction",
+                desc="The direction to show.",
+                icon="brush",
+                default=BART_DIRECTIONS_SCHEMA_OPTIONS[0].value,
+                options=BART_DIRECTIONS_SCHEMA_OPTIONS,
             ),
             schema.Text(
                 id="bart_filter_below_mins",
@@ -113,9 +188,9 @@ def get_schema():
                 default="0",
             ),
             schema.Toggle(
-                id="use_fixture",
-                name="use_fixture",
-                desc="use_fixture",
+                id="use_test_data",
+                name="use_test_data",
+                desc="use_test_data",
                 icon="compress",
             ),
         ],
@@ -139,8 +214,9 @@ def get_bart_data(config):
     if bart_dir == None:
         fail("bart_dir not set in config")
 
-    if config.bool("use_fixture", False):
-        unsorted_bart_trains_estimates_mins = BART_FIXTURE
+    if config.bool("use_test_data", False):
+        bart_ests_mins = BART_FIXTURE
+        print(bart_ests_mins)
     else:
         bart_api_url = build_bart_api_url(bart_stop_id, bart_dir)
         bart_data = fetch_data(bart_api_url, bart_api_url)
@@ -152,14 +228,19 @@ def get_bart_data(config):
             for estimate in etd["estimate"]:
                 all_estimates.append(estimate)
 
-        bart_trains_estimates_strs = [est["minutes"] for est in all_estimates]
         unsorted_bart_trains_estimates_mins = [
-            int(est_str) for est_str in bart_trains_estimates_strs if est_str.isdigit()
+            {"mins": int(est["minutes"]), "color": est["hexcolor"]}
+            for est in all_estimates
+            if est["minutes"].isdigit()
         ]
-
+        bart_ests_mins = sorted(
+            unsorted_bart_trains_estimates_mins,
+            lambda x: x["mins"],
+        )
     bart_filter_below_mins = int(config.get("bart_filter_below_mins", "0"))
-    bart_ests_mins = sorted(unsorted_bart_trains_estimates_mins)
-    bart_ests_mins_filtered = [x for x in bart_ests_mins if x >= bart_filter_below_mins]
+    bart_ests_mins_filtered = [
+        x for x in bart_ests_mins if x["mins"] >= bart_filter_below_mins
+    ]
     return bart_ests_mins_filtered
 
 
@@ -175,7 +256,7 @@ def get_muni_data(config):
     if muni_stop_id == None:
         fail("muni_stop_id not set in config")
 
-    if config.bool("use_fixture", False):
+    if config.bool("use_test_data", False):
         muni_estimates = MUNI_FIXTURE
     else:
         muni_api_url = build_muni_api_url(muni_stop_id)
@@ -272,15 +353,32 @@ def render_progress_bar():
 
 
 def render_bart_times(bart_ests_mins):
-    times = " ".join([str(mins) for mins in bart_ests_mins])
+    times = " ".join([str(est["mins"]) for est in bart_ests_mins])
     return render.Padding(
         child=render.Row(
             children=[
                 render.Text(content="BART ", font="tb-8"),
-                render.Text(content=times, font="tb-8"),
+                render.Row(
+                    children=[render_bart_estimate(est) for est in bart_ests_mins]
+                ),
             ]
         ),
-        pad=(4, 0, 2, 0),
+        pad=(2, 0, 2, 0),
+    )
+
+
+def render_bart_estimate(est):
+    return render.Padding(
+        child=render.Row(
+            children=[
+                render.Padding(
+                    child=render.Box(width=2, height=6, color=est["color"]),
+                    pad=(0, 1, 0, 0),
+                ),
+                render.Text(content=str(est["mins"]), font="tb-8"),
+            ]
+        ),
+        pad=(0, 0, 1, 0),
     )
 
 
