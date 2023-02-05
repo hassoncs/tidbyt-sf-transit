@@ -33,30 +33,23 @@ BART_API_URI = (
 BART_CACHE_KEY = "bart_data"
 
 MUNI_FILTER_BELOW_MINS = 9
-MUNI_STOP_ID = 15726
 MUNI_API_KEY = "063bab8e-6059-46b0-9c74-ddad0540a6d1"
-MUNI_API_URI = (
-    "http://api.511.org/transit/StopMonitoring?api_key=%s&agency=SF&format=json&stopCode=%d"
-    % (MUNI_API_KEY, MUNI_STOP_ID)
-)
 MUNI_CACHE_KEY = "muni_data"
 
 
 def main(config):
-    muni_stop_id = config.get("muni_stop_id")
-    print(muni_stop_id)
-
     if USE_FIXTURE_DATA:
-        bart_ests_mins_all = [10, 12, 19, 73]
+        bart_ests_mins_all = [2, 4, 10, 12, 19, 73]
         muni_estimates_all = [
+            {"mins": 4, "line": "K"},
             {"mins": 11, "line": "J"},
             {"mins": 15, "line": "M"},
             {"mins": 18, "line": "S"},
             {"mins": 36, "line": "K"},
         ]
     else:
-        bart_ests_mins_all = get_bart_data()
-        muni_estimates_all = get_muni_data()
+        bart_ests_mins_all = get_bart_data(config)
+        muni_estimates_all = get_muni_data(config)
 
     bart_ests_mins = bart_ests_mins_all[0:3]
     muni_estimates = muni_estimates_all[0:3]
@@ -105,7 +98,7 @@ def get_schema():
     )
 
 
-def get_bart_data():
+def get_bart_data(config):
     bart_data = fetch_data(BART_CACHE_KEY, BART_API_URI)
 
     station_data = bart_data["root"]["station"][0]
@@ -124,8 +117,20 @@ def get_bart_data():
     return bart_ests_mins_filtered
 
 
-def get_muni_data():
-    muni_data = fetch_data(MUNI_CACHE_KEY, MUNI_API_URI)
+def build_muni_api_url(muni_stop_id):
+    return (
+        "http://api.511.org/transit/StopMonitoring?api_key=%s&agency=SF&format=json&stopCode=%s"
+        % (MUNI_API_KEY, muni_stop_id)
+    )
+
+
+def get_muni_data(config):
+    muni_stop_id = config.str("muni_stop_id")
+    if muni_stop_id == None:
+        fail("muni_stop_id not set in config")
+
+    muni_api_url = build_muni_api_url(muni_stop_id)
+    muni_data = fetch_data(MUNI_CACHE_KEY, muni_api_url)
     stop_visits = muni_data["ServiceDelivery"]["StopMonitoringDelivery"][
         "MonitoredStopVisit"
     ]
@@ -220,7 +225,6 @@ def render_bart_times(bart_ests_mins):
         child=render.Row(
             children=[
                 render.Text(content="BART ", font="tb-8"),
-                # render.Text(content="a ", color="#4498D4", font="tb-8"),
                 render.Text(content=times, font="tb-8"),
             ]
         ),
@@ -232,7 +236,6 @@ def render_muni_times(muni_estimates):
     lines = [est["line"] for est in muni_estimates]
     times = " ".join([str(estimate["mins"]) for estimate in muni_estimates])
     items = [render_muni_estimate(est) for est in muni_estimates]
-    # items = [render.Text(content="mins")]
     return render.Row(children=items)
 
 
@@ -249,11 +252,8 @@ def render_muni_estimate(estimate):
 
 
 def render_muni_dots(lines):
-    return render.Padding(
-        child=render.Row(
-            children=[render_muni_dot(line) for line in lines],
-        ),
-        pad=(0, 0, 0, 0),
+    return render.Row(
+        children=[render_muni_dot(line) for line in lines],
     )
 
 

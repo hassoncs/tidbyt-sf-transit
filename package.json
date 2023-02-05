@@ -4,11 +4,14 @@
   "description": "",
   "main": "index.js",
   "scripts": {
-    "serve:watch": "dotenv -- nodemon --watch ./sf-best-transit.star.py --exec 'pixlet render sf-best-transit.star && pixlet push --installation-id sfbesttransit $DEVICE_ID sf-best-transit.webp'"
+    "render": "dotenv -- cross-var \"pixlet render %APP_ID%.star %CONFIG%\"",
+    "push": "dotenv -- cross-var \"pixlet push --installation-id %INSTALLATION_ID% %DEVICE_ID% %APP_ID%.webp\"",
+    "serve:watch": "nodemon --watch ./%APP_ID%.star.py --exec 'npm run render && npm run push'"
   },
   "author": "",
   "license": "ISC",
   "dependencies": {
+    "cross-var": "^1.1.0",
     "dotenv": "^16.0.3",
     "dotenv-cli": "^7.0.0",
     "nodemon": "^2.0.20"
