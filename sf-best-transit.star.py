@@ -5,7 +5,6 @@ Description: See next transit arrivals from SFMTA and BART. Optimized for 2 near
 Author: hassoncs
 """
 
-
 load("render.star", "render")
 load("schema.star", "schema")
 load("time.star", "time")
@@ -17,10 +16,12 @@ load("encoding/json.star", "json")
 
 CACHE_TTL = 60
 FPS_ESTIMATE = 20
-
+MAX_AGE_SECS = 60
 
 BART_PUBLIC_API_KEY = "MW9S-E7SL-26DU-VV8V"
 MUNI_API_KEY = "063bab8e-6059-46b0-9c74-ddad0540a6d1"
+DEFAULT_MUNI_STOP_ID = "15726"
+DEFAULT_BART_STOP_ID = "16th"
 
 BART_FIXTURE = [
     {"mins": 2, "color": "#339933"},
@@ -102,41 +103,10 @@ BART_STOP_NAMES_BY_STOP_ID = {
     "WOAK": "West Oakland",
 }
 
-BART_DIRECTIONS_SCHEMA_OPTIONS = [
-    schema.Option(
-        display="North",
-        value="N",
-    ),
-    schema.Option(
-        display="South",
-        value="S",
-    ),
-]
-
 
 def main(config):
-    bart_ests_mins_all = get_bart_data(config)
-    muni_estimates_all = get_muni_data(config)
-
-    bart_ests_mins = bart_ests_mins_all[0:3]
-    muni_estimates = muni_estimates_all[0:3]
-
-    print(
-        "There are bart trains coming in "
-        + ", ".join([str(est["mins"]) for est in bart_ests_mins])
-        + " mins"
-    )
-    print(
-        "There are muni trains coming in "
-        + ", ".join([str(est["mins"]) for est in muni_estimates])
-        + " mins"
-    )
-
-    transit_data = {
-        "bart_ests_mins": bart_ests_mins,
-        "muni_estimates": muni_estimates,
-    }
-    return render.Root(delay=0, child=render_all(transit_data))
+    all_transit_estimates = fetch_all_transit_estimates(config)
+    return render.Root(child=render_all(all_transit_estimates), max_age=MAX_AGE_SECS)
 
 
 def get_schema():
@@ -147,15 +117,25 @@ def get_schema():
         )
         for key in BART_STOP_NAMES_BY_STOP_ID.keys()
     ]
+    bart_direction_options = [
+        schema.Option(
+            display="North",
+            value="N",
+        ),
+        schema.Option(
+            display="South",
+            value="S",
+        ),
+    ]
     return schema.Schema(
         version="1",
         fields=[
-            schema.Text(
-                id="muni_stop_id",
-                name="MUNI stop_id",
-                desc="Enter a muni stop_id",
-                icon="user",
-                default="15726",
+            schema.Typeahead(
+                id="muni_stop_json",
+                name="Muni Stop Id",
+                desc="The muni stop to use",
+                icon="gear",
+                handler=search_muni_stop,
             ),
             schema.Text(
                 id="muni_filter_below_mins",
@@ -177,8 +157,8 @@ def get_schema():
                 name="BART Direction",
                 desc="The direction to show.",
                 icon="brush",
-                default=BART_DIRECTIONS_SCHEMA_OPTIONS[0].value,
-                options=BART_DIRECTIONS_SCHEMA_OPTIONS,
+                default=bart_direction_options[0].value,
+                options=bart_direction_options,
             ),
             schema.Text(
                 id="bart_filter_below_mins",
@@ -197,25 +177,52 @@ def get_schema():
     )
 
 
-def build_bart_api_url(bart_stop_id, bart_dir):
-    return "https://api.bart.gov/api/etd.aspx?cmd=etd&key=%s&orig=%s&dir=%s&json=y" % (
-        BART_PUBLIC_API_KEY,
-        bart_stop_id,
-        bart_dir,
+def search_muni_stop(pattern):
+    get_all_stops_url = build_muni_get_all_stops_api_url()
+    all_muni_stops = fetch_data(get_all_stops_url, get_all_stops_url)
+    stops = all_muni_stops["Contents"]["dataObjects"]["ScheduledStopPoint"]
+    matching_stops = [
+        stop for stop in stops if len(pattern) == 0 or pattern in stop["Name"]
+    ]
+    return [
+        schema.Option(display="%s (%s)" % (stop["Name"], stop["id"]), value=stop["id"])
+        for stop in matching_stops
+    ]
+
+
+def fetch_all_transit_estimates(config):
+    bart_estimates = fetch_bart_data(config)
+    muni_estimates = fetch_muni_data(config)
+
+    print(
+        "There are bart trains coming in "
+        + ", ".join([str(est["mins"]) for est in bart_estimates])
+        + " mins"
+    )
+    print(
+        "There are muni trains coming in "
+        + ", ".join([str(est["mins"]) for est in muni_estimates])
+        + " mins"
     )
 
+    all_transit_estimates = {
+        "bart_estimates": bart_estimates,
+        "muni_estimates": muni_estimates,
+    }
+    return all_transit_estimates
 
-def get_bart_data(config):
+
+def fetch_bart_data(config):
     bart_stop_id = config.str("bart_stop_id")
     if bart_stop_id == None:
-        fail("bart_stop_id not set in config")
+        bart_stop_id = DEFAULT_BART_STOP_ID
 
     bart_dir = config.str("bart_dir")
     if bart_dir == None:
-        fail("bart_dir not set in config")
+        bart_dir = "N"
 
     if config.bool("use_test_data", False):
-        bart_ests_mins = BART_FIXTURE
+        bart_estimates = BART_FIXTURE
     else:
         bart_api_url = build_bart_api_url(bart_stop_id, bart_dir)
         bart_data = fetch_data(bart_api_url, bart_api_url)
@@ -232,15 +239,23 @@ def get_bart_data(config):
             for est in all_estimates
             if est["minutes"].isdigit()
         ]
-        bart_ests_mins = sorted(
+        bart_estimates = sorted(
             unsorted_bart_trains_estimates_mins,
             lambda x: x["mins"],
         )
     bart_filter_below_mins = int(config.get("bart_filter_below_mins", "0"))
-    bart_ests_mins_filtered = [
-        x for x in bart_ests_mins if x["mins"] >= bart_filter_below_mins
+    bart_estimates_filtered = [
+        x for x in bart_estimates if x["mins"] >= bart_filter_below_mins
     ]
-    return bart_ests_mins_filtered
+    return bart_estimates_filtered[0:3]
+
+
+def build_bart_api_url(bart_stop_id, bart_dir):
+    return "https://api.bart.gov/api/etd.aspx?cmd=etd&key=%s&orig=%s&dir=%s&json=y" % (
+        BART_PUBLIC_API_KEY,
+        bart_stop_id,
+        bart_dir,
+    )
 
 
 def build_muni_api_url(muni_stop_id):
@@ -250,10 +265,19 @@ def build_muni_api_url(muni_stop_id):
     )
 
 
-def get_muni_data(config):
-    muni_stop_id = config.str("muni_stop_id")
-    if muni_stop_id == None:
-        fail("muni_stop_id not set in config")
+def build_muni_get_all_stops_api_url():
+    return "http://api.511.org/transit/stops?api_key=%s&operator_id=SF&format=json" % (
+        MUNI_API_KEY
+    )
+
+
+def fetch_muni_data(config):
+    muni_stop_json_str = config.get("muni_stop_json")
+    if muni_stop_json_str:
+        muni_stop_json = json.decode(muni_stop_json_str)
+        muni_stop_id = muni_stop_json["value"]
+    else:
+        muni_stop_id = DEFAULT_MUNI_STOP_ID
 
     if config.bool("use_test_data", False):
         muni_estimates = MUNI_FIXTURE
@@ -271,7 +295,7 @@ def get_muni_data(config):
     muni_estimates_filtered = [
         est for est in muni_estimates if est["mins"] >= muni_filter_below_mins
     ]
-    return muni_estimates_filtered
+    return muni_estimates_filtered[0:3]
 
 
 def extract_muni_stop_visit(stop_visit):
@@ -304,33 +328,31 @@ def fetch_data(cache_key, url):
 
 
 def render_all(transit_data):
-    bart_ests_mins = transit_data["bart_ests_mins"]
+    bart_estimates = transit_data["bart_estimates"]
     muni_estimates = transit_data["muni_estimates"]
     return render.Stack(
         children=[
             render.Column(
                 expanded=True,
-                main_align="space_evenly",  # Controls horizontal alignment
-                cross_align="center",  # Controls vertical alignment
+                main_align="space_evenly",
+                cross_align="center",
                 children=[
                     render_muni_times(muni_estimates),
-                    render_bart_times(bart_ests_mins),
+                    render_bart_times(bart_estimates),
                 ],
             ),
-            render_progress_bar(),
+            # render_progress_bar(),
         ]
     )
 
 
 def render_progress_bar():
     width = 6
-    end_x = 64  # - width
+    end_x = 64
     return animation.Transformation(
         child=render.Box(width=width, height=1, color="#ccc"),
         duration=FPS_ESTIMATE * 61,
         delay=0,
-        # origin=animation.Origin(0.5, 0.5),
-        # direction="alternate",
         fill_mode="forwards",
         keyframes=[
             animation.Keyframe(
@@ -350,13 +372,12 @@ def render_progress_bar():
     )
 
 
-def render_bart_times(bart_ests_mins):
+def render_bart_times(bart_estimates):
     return render.Padding(
         child=render.Row(
             children=[
-                render.Text(content="BART ", font="tb-8"),
                 render.Row(
-                    children=[render_bart_estimate(est) for est in bart_ests_mins]
+                    children=[render_bart_estimate(est) for est in bart_estimates]
                 ),
             ],
             expanded=True,
@@ -372,13 +393,18 @@ def render_bart_estimate(est):
         child=render.Row(
             children=[
                 render.Padding(
-                    child=render.Box(width=2, height=6, color=est["color"]),
-                    pad=(0, 1, 0, 0),
+                    child=render.Box(
+                        width=6,
+                        height=6,
+                        color=est["color"],
+                        child=render.Text(content="", font="tb-8"),
+                    ),
+                    pad=(0, 1, 1, 0),
                 ),
                 render.Text(content=str(est["mins"]), font="tb-8"),
             ]
         ),
-        pad=(0, 0, 0, 0),
+        pad=(2, 0, 0, 0),
     )
 
 
@@ -419,7 +445,7 @@ def render_muni_dot(line):
             children=[
                 render.Circle(
                     color=background_color,
-                    diameter=8,
+                    diameter=9,
                     child=render.Text(content=line, color=text_color),
                 ),
             ],
