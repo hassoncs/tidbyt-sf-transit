@@ -133,56 +133,57 @@ def get_schema():
             schema.Typeahead(
                 id="muni_stop_json",
                 name="Muni Stop Id",
-                desc="The muni stop to use",
-                icon="gear",
+                desc="Show arrival estimates for this Muni stop",
+                icon="locationCrosshairs",
                 handler=search_muni_stop,
             ),
             schema.Text(
                 id="muni_filter_below_mins",
-                name="muni_filter_below_mins",
-                desc="Don't show arrivals under this many mins",
-                icon="user",
+                name="Hide Muni below mins",
+                desc="Hide arrivals below this many mins",
+                icon="stopwatch",
                 default="0",
             ),
             schema.Dropdown(
                 id="bart_stop_id",
-                name="BART stop",
-                desc="The bart stop to use.",
-                icon="brush",
+                name="Bart stop",
+                desc="Show arrival estimates for this station",
+                icon="locationCrosshairs",
                 default=bart_station_options[0].value,
                 options=bart_station_options,
             ),
             schema.Dropdown(
                 id="bart_dir",
                 name="BART Direction",
-                desc="The direction to show.",
-                icon="brush",
+                desc="Bart Direction",
+                icon="compass",
                 default=bart_direction_options[0].value,
                 options=bart_direction_options,
             ),
             schema.Text(
                 id="bart_filter_below_mins",
-                name="bart_filter_below_mins",
-                desc="Don't show arrivals under this many mins",
-                icon="user",
+                name="Hide Bart below mins",
+                desc="Hide arrivals below this many mins",
+                icon="stopwatch",
                 default="0",
             ),
             schema.Toggle(
                 id="use_test_data",
-                name="use_test_data",
-                desc="use_test_data",
-                icon="compress",
+                name="Use example data",
+                desc="Display example data instead of real estimates",
+                icon="vial",
             ),
         ],
     )
 
 
 def search_muni_stop(pattern):
+    pattern_lower = pattern.lower()
     get_all_stops_url = build_muni_get_all_stops_api_url()
     all_muni_stops = fetch_data(get_all_stops_url, get_all_stops_url)
     stops = all_muni_stops["Contents"]["dataObjects"]["ScheduledStopPoint"]
     matching_stops = [
-        stop for stop in stops if len(pattern) == 0 or pattern in stop["Name"]
+        stop for stop in stops if pattern or pattern_lower in stop["Name"].lower()
     ]
     return [
         schema.Option(display="%s (%s)" % (stop["Name"], stop["id"]), value=stop["id"])
