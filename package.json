@@ -6,7 +6,8 @@
   "scripts": {
     "render": "dotenv -- cross-var \"echo 'Render'; pixlet render %APP_ID%.star %CONFIG%\"",
     "push": "dotenv -- cross-var \"pixlet push --installation-id %INSTALLATION_ID% %DEVICE_ID% %APP_ID%.webp\"",
-    "serve:watch": "nodemon --watch ./sf-best-transit.star.py --watch .env --exec 'npm run render && npm run push'"
+    "dev": "nodemon --watch ./sf-best-transit.star.py --watch .env --exec 'npm run render && npm run push'",
+    "serve": "dotenv -- cross-var \"pixlet serve %APP_ID%.star\""
   },
   "author": "",
   "license": "ISC",

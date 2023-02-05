@@ -1,3 +1,11 @@
+"""
+Applet: SFBestTransit
+Summary: See next transit arrivals for both Muni and Bart
+Description: See next transit arrivals from SFMTA and BART. Optimized for 2 nearby stops.
+Author: hassoncs
+"""
+
+
 load("render.star", "render")
 load("schema.star", "schema")
 load("time.star", "time")
@@ -21,12 +29,10 @@ COLORS_BY_LINE = {
     "BART": {"background": "#3F80DC", "text": "#FFF"},
 }
 
-BART_FILTER_BELOW_MINS = 10
 BART_PUBLIC_API_KEY = "MW9S-E7SL-26DU-VV8V"
-BART_FIXTURE = [2, 4, 10, 12, 19, 73]
-
-MUNI_FILTER_BELOW_MINS = 9
 MUNI_API_KEY = "063bab8e-6059-46b0-9c74-ddad0540a6d1"
+
+BART_FIXTURE = [2, 4, 10, 12, 19, 73]
 MUNI_FIXTURE = [
     {"mins": 4, "line": "K"},
     {"mins": 11, "line": "J"},
@@ -76,12 +82,41 @@ def get_schema():
                 name="MUNI stop_id",
                 desc="Enter a muni stop_id",
                 icon="user",
+                default="15726",
+            ),
+            schema.Text(
+                id="muni_filter_below_mins",
+                name="muni_filter_below_mins",
+                desc="Don't show arrivals under this many mins",
+                icon="user",
+                default="0",
             ),
             schema.Text(
                 id="bart_stop_id",
                 name="BART stop_id",
                 desc="Enter a bart stop_id",
                 icon="user",
+                default="16th",
+            ),
+            schema.Text(
+                id="bart_dir",
+                name="BART bart_dir",
+                desc="Enter a bart direction",
+                icon="user",
+                default="N",
+            ),
+            schema.Text(
+                id="bart_filter_below_mins",
+                name="bart_filter_below_mins",
+                desc="Don't show arrivals under this many mins",
+                icon="user",
+                default="0",
+            ),
+            schema.Toggle(
+                id="use_fixture",
+                name="use_fixture",
+                desc="use_fixture",
+                icon="compress",
             ),
         ],
     )
@@ -104,7 +139,7 @@ def get_bart_data(config):
     if bart_dir == None:
         fail("bart_dir not set in config")
 
-    if config.bool("use_fixture_data", False):
+    if config.bool("use_fixture", False):
         unsorted_bart_trains_estimates_mins = BART_FIXTURE
     else:
         bart_api_url = build_bart_api_url(bart_stop_id, bart_dir)
@@ -140,7 +175,7 @@ def get_muni_data(config):
     if muni_stop_id == None:
         fail("muni_stop_id not set in config")
 
-    if config.bool("use_fixture_data", False):
+    if config.bool("use_fixture", False):
         muni_estimates = MUNI_FIXTURE
     else:
         muni_api_url = build_muni_api_url(muni_stop_id)
