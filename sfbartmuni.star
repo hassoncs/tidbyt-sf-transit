@@ -397,7 +397,7 @@ def render_bart_estimate(est):
     )
 
 def render_muni_estimates(muni_estimates):
-    items = [render_muni_estimate(est) for est in muni_estimates]
+    items = [render_muni_estimate(muni_estimates[i], i) for i in range(len(muni_estimates))]
     return render.Column(
         children = items,
         expanded = True,
@@ -405,7 +405,7 @@ def render_muni_estimates(muni_estimates):
         cross_align = "start",
     )
 
-def render_muni_estimate(estimate):
+def render_muni_estimate(estimate, index):
     return render.Padding(
         child = render.Row(
             children = [
@@ -413,7 +413,7 @@ def render_muni_estimate(estimate):
                 render.Text(content = str(estimate["mins"])),
             ],
         ),
-        pad = (1, 2, 0, 0),
+        pad = (0, 2 if index > 0 else 0, 0, 0),
     )
 
 def render_muni_dot(line):

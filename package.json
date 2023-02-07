@@ -6,6 +6,7 @@
   "scripts": {
     "dev": "dotenv -- cross-var \"nodemon --watch %APP_ID%.star --watch .env --exec 'npm run update'\"",
     "fix": "dotenv -- cross-var \"pixlet lint --fix %APP_ID%.star\"",
+    "gif": "dotenv -- cross-var \"pixlet render %APP_ID%.star --gif --magnify 10 %CONFIG%\"",
     "lint": "dotenv -- cross-var \"pixlet lint %APP_ID%.star\"",
     "push": "dotenv -- cross-var \"pixlet push --api-token %API_KEY% --installation-id %INSTALLATION_ID% %DEVICE_ID% %APP_ID%.webp\"",
     "profile": "dotenv -- cross-var \"pixlet profile %APP_ID%.star %CONFIG%\"",
