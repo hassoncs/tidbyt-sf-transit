@@ -53,7 +53,7 @@ COLORS_BY_LINE = {
     "BART": {"background": "#3F80DC", "text": "#FFF"},
     "F": {"background": "#f0e68c", "text": "#000"},
     "J": {"background": "#D7892A", "text": "#FFF"},
-    "K": {"background": "#74A0BB", "text": "#FFF"},
+    "K": {"background": "#74A0BB", "text": "#000"},
     "L": {"background": "#8F338E", "text": "#FFF"},
     "M": {"background": "#338246", "text": "#FFF"},
     "N": {"background": "#234C89", "text": "#FFF"},
@@ -162,7 +162,7 @@ def get_schema():
                 name = "Hide Muni below mins",
                 desc = "Hide arrivals below this many mins",
                 icon = "stopwatch",
-                default = "0",
+                default = "1",
             ),
             schema.Dropdown(
                 id = "bart_stop_id",
@@ -185,7 +185,7 @@ def get_schema():
                 name = "Hide Bart below mins",
                 desc = "Hide arrivals below this many mins",
                 icon = "stopwatch",
-                default = "0",
+                default = "1",
             ),
             schema.Text(
                 id = MUNI_API_KEY_NAME,
@@ -402,7 +402,7 @@ def render_muni_estimates(muni_estimates):
         children = items,
         expanded = True,
         main_align = "center",
-        cross_align = "start",
+        cross_align = "end",
     )
 
 def render_muni_estimate(estimate, index):
@@ -410,7 +410,10 @@ def render_muni_estimate(estimate, index):
         child = render.Row(
             children = [
                 render_muni_dot(estimate["line"]),
-                render.Text(content = str(estimate["mins"])),
+                render.Stack(children = [
+                    render.Box(width = 10, height = 7),
+                    render.Text(content = str(estimate["mins"])),
+                ]),
             ],
         ),
         pad = (0, 2 if index > 0 else 0, 0, 0),
@@ -425,15 +428,16 @@ def render_muni_dot(line):
     else:
         use_circle = False
         text_color = "#000"
-        background_color = "#bbf"
+        background_color = "#bde8ff"
 
+    box_width = 1 + 5 * len(line)
     child = render.Circle(
         color = background_color,
         diameter = 8,
         child = render.Text(content = line, color = text_color, font = "tb-8"),
     ) if use_circle else render.Box(
         color = background_color,
-        width = 11,
+        width = box_width,
         height = 7,
         padding = 0,
         child = render.Padding(
@@ -442,8 +446,6 @@ def render_muni_dot(line):
         ),
     )
     return render.Padding(
-        child = render.Stack(
-            children = [child],
-        ),
+        child = child,
         pad = (0, 0, 1, 0),
     )
