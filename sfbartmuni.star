@@ -50,14 +50,15 @@ BART_FIXTURE = [
 # Color / stop configuration
 
 COLORS_BY_LINE = {
+    "BART": {"background": "#3F80DC", "text": "#FFF"},
+    "F": {"background": "#f0e68c", "text": "#000"},
     "J": {"background": "#D7892A", "text": "#FFF"},
     "K": {"background": "#74A0BB", "text": "#FFF"},
     "L": {"background": "#8F338E", "text": "#FFF"},
     "M": {"background": "#338246", "text": "#FFF"},
     "N": {"background": "#234C89", "text": "#FFF"},
-    "T": {"background": "#BB3735", "text": "#FFF"},
     "S": {"background": "#FFFF35", "text": "#000"},
-    "BART": {"background": "#3F80DC", "text": "#FFF"},
+    "T": {"background": "#BB3735", "text": "#FFF"},
 }
 
 BART_STOP_NAMES_BY_STOP_ID = {
@@ -120,12 +121,13 @@ def main(config):
 
 def configure(config):
     # Get the muni api key from the secret if we can, falling back to using config
-    maybe_muni_api_key = secret.decrypt(MUNI_API_KEY_ENCRYPTED) or config.get(MUNI_API_KEY_NAME)
-    cache.set(
-        MUNI_API_KEY_NAME,
-        maybe_muni_api_key,
-        ttl_seconds = 30 * 24 * 60 * 60,
-    )
+    maybe_muni_api_key = secret.decrypt(MUNI_API_KEY_ENCRYPTED) or config.str(MUNI_API_KEY_NAME)
+    if maybe_muni_api_key:
+        cache.set(
+            MUNI_API_KEY_NAME,
+            maybe_muni_api_key,
+            ttl_seconds = 30 * 24 * 60 * 60,
+        )
 
 def get_schema():
     bart_station_options = [
@@ -202,7 +204,10 @@ def get_schema():
 
 def search_muni_stop(pattern):
     pattern_lower = pattern.lower()
-    get_all_stops_url = build_muni_get_all_stops_api_url()
+    muni_api_key = cache.get(MUNI_API_KEY_NAME)
+    if muni_api_key == None:
+        return [schema.Option(display = "Failed. Need muni_api_key", value = 0)]
+    get_all_stops_url = build_muni_get_all_stops_api_url(muni_api_key)
     all_muni_stops = fetch_data(get_all_stops_url, get_all_stops_url)
 
     stops = all_muni_stops["Contents"]["dataObjects"]["ScheduledStopPoint"]
@@ -276,12 +281,6 @@ def fetch_bart_data(config):
     ]
     return bart_estimates_filtered[0:3]
 
-def get_muni_api_key():
-    muni_api_key = cache.get(MUNI_API_KEY_NAME)
-    if muni_api_key == None:
-        fail("No muni_api_key is available. Try setting one in the config")
-    return muni_api_key
-
 def build_bart_api_url(bart_stop_id, bart_dir):
     return "https://api.bart.gov/api/etd.aspx?cmd=etd&key=%s&orig=%s&dir=%s&json=y" % (
         BART_PUBLIC_API_KEY,
@@ -289,15 +288,13 @@ def build_bart_api_url(bart_stop_id, bart_dir):
         bart_dir,
     )
 
-def build_muni_api_url(muni_stop_id):
-    muni_api_key = get_muni_api_key()
+def build_muni_api_url(muni_api_key, muni_stop_id):
     return (
         "http://api.511.org/transit/StopMonitoring?api_key=%s&agency=SF&format=json&stopCode=%s" %
         (muni_api_key, muni_stop_id)
     )
 
-def build_muni_get_all_stops_api_url():
-    muni_api_key = get_muni_api_key()
+def build_muni_get_all_stops_api_url(muni_api_key):
     return "http://api.511.org/transit/stops?api_key=%s&operator_id=SF&format=json" % (
         muni_api_key
     )
@@ -313,7 +310,10 @@ def fetch_muni_data(config):
     if config.bool("use_test_data", False):
         muni_estimates = MUNI_FIXTURE
     else:
-        muni_api_url = build_muni_api_url(muni_stop_id)
+        muni_api_key = cache.get(MUNI_API_KEY_NAME)
+        if muni_api_key == None:
+            return []
+        muni_api_url = build_muni_api_url(muni_api_key, muni_stop_id)
         muni_data = fetch_data(muni_api_url, muni_api_url)
         stop_visits = muni_data["ServiceDelivery"]["StopMonitoringDelivery"]["MonitoredStopVisit"]
         muni_estimates = [
@@ -413,7 +413,7 @@ def render_muni_estimate(estimate):
                 render.Text(content = str(estimate["mins"])),
             ],
         ),
-        pad = (1, 1, 0, 0),
+        pad = (1, 2, 0, 0),
     )
 
 def render_muni_dot(line):
@@ -433,10 +433,13 @@ def render_muni_dot(line):
         child = render.Text(content = line, color = text_color, font = "tb-8"),
     ) if use_circle else render.Box(
         color = background_color,
-        width = 10,
+        width = 11,
         height = 7,
-        padding = 1,
-        child = render.Text(content = line, color = text_color, font = "CG-pixel-4x5-mono"),
+        padding = 0,
+        child = render.Padding(
+            child = render.Text(content = line, color = text_color, font = "CG-pixel-4x5-mono"),
+            pad = (1, 0, 0, 0),
+        ),
     )
     return render.Padding(
         child = render.Stack(
