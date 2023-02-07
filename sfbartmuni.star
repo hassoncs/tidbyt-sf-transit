@@ -1,31 +1,34 @@
 """
-Applet: SFBestTransit
-Summary: See next transit arrivals for both Muni and Bart
-Description: See next transit arrivals from SFMTA and BART. Optimized to show Bart and Muni at the same time.
+Applet: SF Bart Muni
+Summary: Show Muni & Bart Estimates
+Description: Shows the predicted arrival times for both Muni and Bart at the same time.
 Author: hassoncs
 """
 
+load("cache.star", "cache")
+load("encoding/json.star", "json")
+load("http.star", "http")
+load("math.star", "math")
 load("render.star", "render")
 load("schema.star", "schema")
+load("secret.star", "secret")
 load("time.star", "time")
-load("http.star", "http")
-load("cache.star", "cache")
-load("math.star", "math")
-load("animation.star", "animation")
-load("encoding/json.star", "json")
 
 # Global config
 
 CACHE_TTL = 60
 MAX_AGE_SECS = 90
-MUNI_API_CACHE_KEY = "muni_api_key"
 
 # Defaults and API keys
 
-BART_PUBLIC_API_KEY = "MW9S-E7SL-26DU-VV8V"
-DEFAULT_MUNI_API_KEY = "063bab8e-6059-46b0-9c74-ddad0540a6d1"
-DEFAULT_MUNI_STOP_ID = "15726"
 DEFAULT_BART_STOP_ID = "16th"
+BART_PUBLIC_API_KEY = "MW9S-E7SL-26DU-VV8V"
+
+DEFAULT_MUNI_STOP_ID = "15726"
+MUNI_API_KEY_NAME = "muni_api_key"
+MUNI_API_KEY_ENCRYPTED = """
+AV6+xWcEFHNh6PsqmJYMRNJeYkNiOx8tUBB6Wns7QgKLc8HI2AS6LRhNuDrTWvyddBtUM24wUEhuIG42LGpefh6CmYkxBfVS7295Yz5OW7ygTXsEZZybB3U6ouO/Qvis8dpDwQX/ubai5jCjAqf/3XvG9e4XbWaK5a5WnOT81j5093JbVxI=
+"""
 
 # Test data used during app development
 MUNI_FIXTURE = [
@@ -110,94 +113,92 @@ BART_STOP_NAMES_BY_STOP_ID = {
     "WOAK": "West Oakland",
 }
 
-
 def main(config):
     configure(config)
     all_transit_estimates = fetch_all_transit_estimates(config)
-    return render.Root(child=render_all(all_transit_estimates), max_age=MAX_AGE_SECS)
-
+    return render.Root(child = render_all(all_transit_estimates), max_age = MAX_AGE_SECS)
 
 def configure(config):
-    muni_api_key_from_config = config.str("muni_api_key", DEFAULT_MUNI_API_KEY)
+    # Get the muni api key from the secret if we can, falling back to using config
+    maybe_muni_api_key = secret.decrypt(MUNI_API_KEY_ENCRYPTED) or config.get(MUNI_API_KEY_NAME)
     cache.set(
-        MUNI_API_CACHE_KEY, muni_api_key_from_config, ttl_seconds=30 * 24 * 60 * 60
+        MUNI_API_KEY_NAME,
+        maybe_muni_api_key,
+        ttl_seconds = 30 * 24 * 60 * 60,
     )
-
 
 def get_schema():
     bart_station_options = [
         schema.Option(
-            display=BART_STOP_NAMES_BY_STOP_ID[key],
-            value=key,
+            display = BART_STOP_NAMES_BY_STOP_ID[key],
+            value = key,
         )
         for key in BART_STOP_NAMES_BY_STOP_ID.keys()
     ]
     bart_direction_options = [
         schema.Option(
-            display="North",
-            value="N",
+            display = "North",
+            value = "N",
         ),
         schema.Option(
-            display="South",
-            value="S",
+            display = "South",
+            value = "S",
         ),
     ]
     return schema.Schema(
-        version="1",
-        fields=[
+        version = "1",
+        fields = [
             schema.Typeahead(
-                id="muni_stop_json",
-                name="Muni Stop Id",
-                desc="Show arrival estimates for this Muni stop",
-                icon="locationCrosshairs",
-                handler=search_muni_stop,
+                id = "muni_stop_json",
+                name = "Muni Stop Id",
+                desc = "Show arrival estimates for this Muni stop",
+                icon = "locationCrosshairs",
+                handler = search_muni_stop,
             ),
             schema.Text(
-                id="muni_filter_below_mins",
-                name="Hide Muni below mins",
-                desc="Hide arrivals below this many mins",
-                icon="stopwatch",
-                default="0",
-            ),
-            schema.Text(
-                id="muni_api_key",
-                name="Muni API key",
-                desc="Muni API key",
-                icon="key",
-                default=DEFAULT_MUNI_API_KEY,
+                id = "muni_filter_below_mins",
+                name = "Hide Muni below mins",
+                desc = "Hide arrivals below this many mins",
+                icon = "stopwatch",
+                default = "0",
             ),
             schema.Dropdown(
-                id="bart_stop_id",
-                name="Bart stop",
-                desc="Show arrival estimates for this station",
-                icon="locationCrosshairs",
-                default=bart_station_options[0].value,
-                options=bart_station_options,
+                id = "bart_stop_id",
+                name = "Bart stop",
+                desc = "Show arrival estimates for this station",
+                icon = "locationCrosshairs",
+                default = bart_station_options[0].value,
+                options = bart_station_options,
             ),
             schema.Dropdown(
-                id="bart_dir",
-                name="BART Direction",
-                desc="Bart Direction",
-                icon="compass",
-                default=bart_direction_options[0].value,
-                options=bart_direction_options,
+                id = "bart_dir",
+                name = "BART Direction",
+                desc = "Bart Direction",
+                icon = "compass",
+                default = bart_direction_options[0].value,
+                options = bart_direction_options,
             ),
             schema.Text(
-                id="bart_filter_below_mins",
-                name="Hide Bart below mins",
-                desc="Hide arrivals below this many mins",
-                icon="stopwatch",
-                default="0",
+                id = "bart_filter_below_mins",
+                name = "Hide Bart below mins",
+                desc = "Hide arrivals below this many mins",
+                icon = "stopwatch",
+                default = "0",
+            ),
+            schema.Text(
+                id = MUNI_API_KEY_NAME,
+                name = "Muni API key",
+                desc = "Muni API key",
+                icon = "key",
             ),
             schema.Toggle(
-                id="use_test_data",
-                name="Use example data",
-                desc="Display example data instead of real estimates",
-                icon="vial",
+                id = "use_test_data",
+                name = "Use example data",
+                desc = "Display example data instead of real estimates",
+                icon = "vial",
             ),
         ],
     )
-
 
 def search_muni_stop(pattern):
     pattern_lower = pattern.lower()
@@ -206,27 +207,28 @@ def search_muni_stop(pattern):
 
     stops = all_muni_stops["Contents"]["dataObjects"]["ScheduledStopPoint"]
     matching_stops = [
-        stop for stop in stops if pattern or pattern_lower in stop["Name"].lower()
+        stop
+        for stop in stops
+        if pattern or pattern_lower in stop["Name"].lower()
     ]
     return [
-        schema.Option(display="%s (%s)" % (stop["Name"], stop["id"]), value=stop["id"])
+        schema.Option(display = "%s (%s)" % (stop["Name"], stop["id"]), value = stop["id"])
         for stop in matching_stops
     ]
-
 
 def fetch_all_transit_estimates(config):
     bart_estimates = fetch_bart_data(config)
     muni_estimates = fetch_muni_data(config)
 
     print(
-        "There are bart trains coming in "
-        + ", ".join([str(est["mins"]) for est in bart_estimates])
-        + " mins"
+        "There are bart trains coming in " +
+        ", ".join([str(est["mins"]) for est in bart_estimates]) +
+        " mins",
     )
     print(
-        "There are muni trains coming in "
-        + ", ".join([str(est["mins"]) for est in muni_estimates])
-        + " mins"
+        "There are muni trains coming in " +
+        ", ".join([str(est["mins"]) for est in muni_estimates]) +
+        " mins",
     )
 
     all_transit_estimates = {
@@ -234,7 +236,6 @@ def fetch_all_transit_estimates(config):
         "muni_estimates": muni_estimates,
     }
     return all_transit_estimates
-
 
 def fetch_bart_data(config):
     bart_stop_id = config.str("bart_stop_id")
@@ -269,17 +270,17 @@ def fetch_bart_data(config):
         )
     bart_filter_below_mins = int(config.get("bart_filter_below_mins", "0"))
     bart_estimates_filtered = [
-        x for x in bart_estimates if x["mins"] >= bart_filter_below_mins
+        x
+        for x in bart_estimates
+        if x["mins"] >= bart_filter_below_mins
     ]
     return bart_estimates_filtered[0:3]
 
-
 def get_muni_api_key():
-    muni_api_key = cache.get(MUNI_API_CACHE_KEY)
+    muni_api_key = cache.get(MUNI_API_KEY_NAME)
     if muni_api_key == None:
-        muni_api_key = DEFAULT_MUNI_API_KEY
+        fail('No muni_api_key is available. Try setting one in the config')
     return muni_api_key
-
 
 def build_bart_api_url(bart_stop_id, bart_dir):
     return "https://api.bart.gov/api/etd.aspx?cmd=etd&key=%s&orig=%s&dir=%s&json=y" % (
@@ -288,21 +289,18 @@ def build_bart_api_url(bart_stop_id, bart_dir):
         bart_dir,
     )
 
-
 def build_muni_api_url(muni_stop_id):
     muni_api_key = get_muni_api_key()
     return (
-        "http://api.511.org/transit/StopMonitoring?api_key=%s&agency=SF&format=json&stopCode=%s"
-        % (muni_api_key, muni_stop_id)
+        "http://api.511.org/transit/StopMonitoring?api_key=%s&agency=SF&format=json&stopCode=%s" %
+        (muni_api_key, muni_stop_id)
     )
-
 
 def build_muni_get_all_stops_api_url():
     muni_api_key = get_muni_api_key()
     return "http://api.511.org/transit/stops?api_key=%s&operator_id=SF&format=json" % (
         muni_api_key
     )
-
 
 def fetch_muni_data(config):
     muni_stop_json_str = config.get("muni_stop_json")
@@ -317,19 +315,19 @@ def fetch_muni_data(config):
     else:
         muni_api_url = build_muni_api_url(muni_stop_id)
         muni_data = fetch_data(muni_api_url, muni_api_url)
-        stop_visits = muni_data["ServiceDelivery"]["StopMonitoringDelivery"][
-            "MonitoredStopVisit"
-        ]
+        stop_visits = muni_data["ServiceDelivery"]["StopMonitoringDelivery"]["MonitoredStopVisit"]
         muni_estimates = [
-            extract_muni_stop_visit(stop_visit) for stop_visit in stop_visits
+            extract_muni_stop_visit(stop_visit)
+            for stop_visit in stop_visits
         ]
 
     muni_filter_below_mins = int(config.get("muni_filter_below_mins", "0"))
     muni_estimates_filtered = [
-        est for est in muni_estimates if est["mins"] >= muni_filter_below_mins
+        est
+        for est in muni_estimates
+        if est["mins"] >= muni_filter_below_mins
     ]
     return muni_estimates_filtered[0:3]
-
 
 def extract_muni_stop_visit(stop_visit):
     journey = stop_visit["MonitoredVehicleJourney"]
@@ -341,7 +339,6 @@ def extract_muni_stop_visit(stop_visit):
         "line": journey["LineRef"],
         "mins": mins,
     }
-
 
 def fetch_data(cache_key, url):
     data_json_str = cache.get(cache_key)
@@ -356,90 +353,96 @@ def fetch_data(cache_key, url):
         body_str = rep.body()
         start_idx = body_str.find("{")
         data_json_str = body_str[start_idx:]
-        cache.set(cache_key, data_json_str, ttl_seconds=CACHE_TTL)
+        cache.set(cache_key, data_json_str, ttl_seconds = CACHE_TTL)
     return json.decode(data_json_str)
-
 
 def render_all(transit_data):
     bart_estimates = transit_data["bart_estimates"]
     muni_estimates = transit_data["muni_estimates"]
     return render.Column(
-        expanded=True,
-        main_align="space_evenly",
-        cross_align="center",
-        children=[
+        expanded = True,
+        main_align = "space_evenly",
+        cross_align = "center",
+        children = [
             render_muni_estimates(muni_estimates),
             render_bart_times(bart_estimates),
         ],
     )
 
-
 def render_bart_times(bart_estimates):
     return render.Row(
-        children=[
-            render.Row(children=[render_bart_estimate(est) for est in bart_estimates]),
+        children = [
+            render.Row(children = [render_bart_estimate(est) for est in bart_estimates]),
         ],
-        expanded=True,
-        main_align="center",
-        cross_align="center",
+        expanded = True,
+        main_align = "center",
+        cross_align = "center",
     )
-
 
 def render_bart_estimate(est):
     return render.Padding(
-        child=render.Row(
-            children=[
+        child = render.Row(
+            children = [
                 render.Padding(
-                    child=render.Box(
-                        width=6,
-                        height=6,
-                        color=est["color"],
-                        child=render.Text(content="", font="tb-8"),
+                    child = render.Box(
+                        width = 6,
+                        height = 6,
+                        color = est["color"],
+                        child = render.Text(content = "", font = "tb-8"),
                     ),
-                    pad=(0, 1, 1, 0),
+                    pad = (0, 1, 1, 0),
                 ),
-                render.Text(content=str(est["mins"]), font="tb-8"),
-            ]
+                render.Text(content = str(est["mins"]), font = "tb-8"),
+            ],
         ),
-        pad=(2, 0, 0, 0),
+        pad = (2, 0, 0, 0),
     )
-
 
 def render_muni_estimates(muni_estimates):
     items = [render_muni_estimate(est) for est in muni_estimates]
     return render.Row(
-        children=items,
-        expanded=True,
-        main_align="center",
-        cross_align="center",
+        children = items,
+        expanded = True,
+        main_align = "center",
+        cross_align = "center",
     )
-
 
 def render_muni_estimate(estimate):
     return render.Padding(
-        child=render.Row(
-            children=[
+        child = render.Row(
+            children = [
                 render_muni_dot(estimate["line"]),
-                render.Text(content=str(estimate["mins"])),
-            ]
-        ),
-        pad=(1, 0, 0, 0),
-    )
-
-
-def render_muni_dot(line):
-    colors = COLORS_BY_LINE[line]
-    text_color = colors["text"]
-    background_color = colors["background"]
-    return render.Padding(
-        child=render.Stack(
-            children=[
-                render.Circle(
-                    color=background_color,
-                    diameter=8,
-                    child=render.Text(content=line, color=text_color, font="tb-8"),
-                ),
+                render.Text(content = str(estimate["mins"])),
             ],
         ),
-        pad=(0, 0, 1, 0),
+        pad = (1, 0, 0, 0),
+    )
+
+def render_muni_dot(line):
+    if line in COLORS_BY_LINE:
+        use_circle = True
+        colors = COLORS_BY_LINE[line]
+        text_color = colors["text"]
+        background_color = colors["background"]
+    else:
+        use_circle = False
+        text_color = "#000"
+        background_color = "#bbf"
+
+    child = render.Circle(
+        color = background_color,
+        diameter = 8,
+        child = render.Text(content = line, color = text_color, font = "tb-8"),
+    ) if use_circle else render.Box(
+        color = background_color,
+        width = 10,
+        height = 7,
+        padding = 1,
+        child = render.Text(content = line, color = text_color, font = "CG-pixel-4x5-mono"),
+    )
+    return render.Padding(
+        child = render.Stack(
+            children = [child],
+        ),
+        pad = (0, 0, 1, 0),
     )

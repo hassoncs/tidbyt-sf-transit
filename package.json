@@ -4,10 +4,16 @@
   "description": "",
   "main": "index.js",
   "scripts": {
+    "dev": "dotenv -- cross-var \"nodemon --watch %APP_ID%.star --watch .env --exec 'npm run update'\"",
+    "fix": "dotenv -- cross-var \"pixlet lint --fix %APP_ID%.star\"",
+    "lint": "dotenv -- cross-var \"pixlet lint %APP_ID%.star\"",
+    "push": "dotenv -- cross-var \"pixlet push --api-token %API_KEY% --installation-id %INSTALLATION_ID% %DEVICE_ID% %APP_ID%.webp\"",
     "render": "dotenv -- cross-var \"echo 'Render'; pixlet render %APP_ID%.star %CONFIG%\"",
-    "push": "dotenv -- cross-var \"pixlet push --installation-id %INSTALLATION_ID% %DEVICE_ID% %APP_ID%.webp\"",
-    "dev": "nodemon --watch ./sf-best-transit.star.py --watch .env --exec 'npm run render && npm run push'",
-    "serve": "dotenv -- cross-var \"pixlet serve %APP_ID%.star\""
+    "serve": "dotenv -- cross-var \"pixlet serve %APP_ID%.star\"",
+    "sync": "dotenv -- cross-var \"nodemon --watch %APP_ID%.star --exec 'cp %APP_ID%.star %TIDBYT_COMMUNITY_REPO_LOCATION%'\"",
+    "update": "npm run render && npm run push",
+    "encrypt": "pixlet encrypt %TIDBYT_COMMUNITY_REPO_NAME% %MUNI_API_KEY%",
+    "update:continuous": "while true; do npm run update; sleep 60; done"
   },
   "author": "",
   "license": "ISC",
