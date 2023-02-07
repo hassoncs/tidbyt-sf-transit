@@ -279,7 +279,7 @@ def fetch_bart_data(config):
 def get_muni_api_key():
     muni_api_key = cache.get(MUNI_API_KEY_NAME)
     if muni_api_key == None:
-        fail('No muni_api_key is available. Try setting one in the config')
+        fail("No muni_api_key is available. Try setting one in the config")
     return muni_api_key
 
 def build_bart_api_url(bart_stop_id, bart_dir):
@@ -359,7 +359,7 @@ def fetch_data(cache_key, url):
 def render_all(transit_data):
     bart_estimates = transit_data["bart_estimates"]
     muni_estimates = transit_data["muni_estimates"]
-    return render.Column(
+    return render.Row(
         expanded = True,
         main_align = "space_evenly",
         cross_align = "center",
@@ -370,13 +370,11 @@ def render_all(transit_data):
     )
 
 def render_bart_times(bart_estimates):
-    return render.Row(
-        children = [
-            render.Row(children = [render_bart_estimate(est) for est in bart_estimates]),
-        ],
+    return render.Column(
+        children = [render_bart_estimate(est) for est in bart_estimates],
         expanded = True,
         main_align = "center",
-        cross_align = "center",
+        cross_align = "start",
     )
 
 def render_bart_estimate(est):
@@ -395,16 +393,16 @@ def render_bart_estimate(est):
                 render.Text(content = str(est["mins"]), font = "tb-8"),
             ],
         ),
-        pad = (2, 0, 0, 0),
+        pad = (2, 1, 0, 0),
     )
 
 def render_muni_estimates(muni_estimates):
     items = [render_muni_estimate(est) for est in muni_estimates]
-    return render.Row(
+    return render.Column(
         children = items,
         expanded = True,
         main_align = "center",
-        cross_align = "center",
+        cross_align = "start",
     )
 
 def render_muni_estimate(estimate):
@@ -415,7 +413,7 @@ def render_muni_estimate(estimate):
                 render.Text(content = str(estimate["mins"])),
             ],
         ),
-        pad = (1, 0, 0, 0),
+        pad = (1, 1, 0, 0),
     )
 
 def render_muni_dot(line):
