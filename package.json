@@ -12,7 +12,8 @@
     "profile": "dotenv -- cross-var \"pixlet profile %APP_ID%.star %CONFIG%\"",
     "render": "dotenv -- cross-var \"pixlet render %APP_ID%.star %CONFIG%\"",
     "serve": "dotenv -- cross-var \"pixlet serve %APP_ID%.star\"",
-    "sync": "dotenv -- cross-var \"nodemon --watch %APP_ID%.star --exec 'cp %APP_ID%.star %TIDBYT_COMMUNITY_REPO_LOCATION%'\"",
+    "sync": "dotenv -- cross-var \"cp %APP_ID%.* %TIDBYT_COMMUNITY_REPO_LOCATION%\"",
+    "sync:watch": "dotenv -- cross-var \"nodemon --watch %APP_ID%.star --exec 'npm run sync'\"",
     "update": "npm run render && npm run push",
     "encrypt": "pixlet encrypt %TIDBYT_COMMUNITY_REPO_NAME% %MUNI_API_KEY%",
     "update:continuous": "while true; do npm run update; sleep 60; done"

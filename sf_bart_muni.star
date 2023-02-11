@@ -288,7 +288,7 @@ def build_bart_api_url(bart_stop_id, bart_dir):
         bart_dir,
     )
 
-def build_muni_api_url(muni_api_key, muni_stop_id):
+def build_muni_stop_monitoring_api_url(muni_api_key, muni_stop_id):
     return (
         "http://api.511.org/transit/StopMonitoring?api_key=%s&agency=SF&format=json&stopCode=%s" %
         (muni_api_key, muni_stop_id)
@@ -313,7 +313,7 @@ def fetch_muni_data(config):
         muni_api_key = cache.get(MUNI_API_KEY_NAME)
         if muni_api_key == None:
             return []
-        muni_api_url = build_muni_api_url(muni_api_key, muni_stop_id)
+        muni_api_url = build_muni_stop_monitoring_api_url(muni_api_key, muni_stop_id)
         muni_data = fetch_data(muni_api_url, muni_api_url)
         stop_visits = muni_data["ServiceDelivery"]["StopMonitoringDelivery"]["MonitoredStopVisit"]
         muni_estimates = [
