@@ -2,8 +2,9 @@
 
 # Intro
 
-Anyone can write apps for the Tidbyt. [Here](https://tidbyt.dev/docs/publish/community-apps).
+An app that displays both Muni and Bart times at the same time. Eventually this will be merged into the Tidbyt community app repo.
 
+![Image](sf_bart_muni.jpg)
 
 Community apps need to be reviewed by the Tidbyt team before they can be installed by the public. Once merged, they live in [this repo](https://github.com/tidbyt/community/). This app is being reviewed now, but hasn't been merged into the community repo yet. So if you'd like to use it, you'll need to install and run it locally.
 
@@ -34,8 +35,7 @@ Copy the example env:
 cp .example.env .env
 ```
 
-Then open .env and fill in the missing values.
-There are a few mandatory values:
+Then open .env and fill in the missing values. There are a few mandatory values:
 * `API_KEY` - Tidbyt API key
 * `DEVICE_ID` - Tidyte device id
 * `MUNI_API_KEY` - Request one from the Muni site.
@@ -43,8 +43,8 @@ There are a few mandatory values:
 
 # Running the app
 To run the app in the web dev server, you can use the `npm run serve` command.
-To automatically push changes to a physical device when you make changes, you can you the use the `npm run dev` command.
 
+To automatically push changes to a physical device when you make changes, you can you the use the `npm run dev` command.
 
 # Setting up a demon
 The `pm2` package can be used to create a auto-restarting, long running process. Please see the pm2 documentation for more details.
