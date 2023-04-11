@@ -393,7 +393,7 @@ def render_bart_estimate(est):
                 render.Text(content = str(est["mins"]), font = "tb-8"),
             ],
         ),
-        pad = (2, 1, 0, 0),
+        pad = (2, 1, 0, 1),
     )
 
 def render_muni_estimates(muni_estimates):
